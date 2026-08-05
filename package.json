@@ -1,0 +1,20 @@
+{
+  "name": "discord-bot-recovery",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "collect": "node src/collect.js",
+    "start": "node src/bot.js",
+    "migrate": "node src/migrate-neon.js",
+    "check": "node scripts/check-syntax.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "dependencies": {
+    "discord.js": "^14.21.0",
+    "dotenv": "^16.6.1"
+  }
+}
