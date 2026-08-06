@@ -1,4 +1,13 @@
 import 'dotenv/config';
+import http from 'node:http';
+
+const port = process.env.PORT || 3000;
+http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('Killjoy Bot is running');
+}).listen(port, () => {
+  console.log(`Servidor HTTP Keep-Alive rodando na porta ${port}`);
+});
 import {
   ActionRowBuilder,
   ActivityType,
