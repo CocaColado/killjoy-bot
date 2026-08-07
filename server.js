@@ -320,8 +320,23 @@ client.on('interactionCreate', async (interaction) => {
         return;
       }
     }
+    // GENERIC FALLBACK FOR ANY UNHANDLED INTERACTION
+    // Previne o erro chato vermelho "A interação falhou" no Discord quando alguém clica em um botão antigo
+    if (interaction.isMessageComponent()) {
+      await interaction.reply({ content: '⚠️ Este botão ou menu expirou ou não está mais ativo.', ephemeral: true }).catch(() => {});
+      return;
+    }
+    
+    if (interaction.isModalSubmit()) {
+      await interaction.deferUpdate().catch(() => {});
+      return;
+    }
+
   } catch (err) {
     console.error('[Interaction Error]:', err.message);
+    if (!interaction.replied && !interaction.deferred) {
+      interaction.reply({ content: 'Ocorreu um erro ao processar essa interação.', ephemeral: true }).catch(() => {});
+    }
   }
 });
 
