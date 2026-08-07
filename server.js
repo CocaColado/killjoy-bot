@@ -16,7 +16,10 @@ import {
   ButtonStyle,
   REST,
   Routes,
-  SlashCommandBuilder
+  SlashCommandBuilder,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle
 } from 'discord.js';
 import { 
   joinVoiceChannel, 
@@ -48,6 +51,7 @@ const GUILD_ID = process.env.GUILD_ID || '1515187485531967629';
 const TEMP_AUDIO_PATH = path.join(__dirname, 'temp_audio.mp3');
 const CLIP_OUTPUT_PATH = path.join(__dirname, 'voice_clip_30s.mp3');
 const AGENTS_DB_PATH = path.join(__dirname, 'user_agents.json');
+const PROFILES_DB_PATH = path.join(__dirname, 'player_profiles.json');
 
 // Render 24/7 Keep-Alive Engine (Prevents Render Free Tier Sleep)
 const RENDER_EXTERNAL_URL = process.env.RENDER_EXTERNAL_URL;
@@ -96,6 +100,36 @@ const registrationState = new Map();
 
 // DM Message Storage Map (userId -> Array of { id, sender, content, timestamp, authorName, authorAvatar })
 const dmStore = new Map();
+
+function loadProfilesDB() {
+  try {
+    if (fs.existsSync(PROFILES_DB_PATH)) {
+      const data = JSON.parse(fs.readFileSync(PROFILES_DB_PATH, 'utf8'));
+      const map = new Map();
+      for (const [userId, profile] of Object.entries(data)) {
+        map.set(userId, profile);
+      }
+      return map;
+    }
+  } catch (e) {
+    console.error('Erro ao carregar player_profiles.json:', e.message);
+  }
+  return new Map();
+}
+
+function saveProfilesDB(map) {
+  try {
+    const obj = {};
+    for (const [userId, profile] of map.entries()) {
+      obj[userId] = profile;
+    }
+    fs.writeFileSync(PROFILES_DB_PATH, JSON.stringify(obj, null, 2), 'utf8');
+  } catch (e) {
+    console.error('Erro ao salvar player_profiles.json:', e.message);
+  }
+}
+
+const playerProfiles = loadProfilesDB();
 
 // Persistent JSON Storage Functions for Saved User Agents
 function loadAgentsDB() {
@@ -272,6 +306,30 @@ client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
 
   const content = message.content.toLowerCase().trim();
+
+  if (content === '!painel-registro') {
+    if (!message.member?.permissions.has('Administrator')) {
+      return message.reply('❌ Apenas administradores podem gerar o painel de registro.');
+    }
+    try {
+      const embed = new EmbedBuilder()
+        .setColor(0xFFE600)
+        .setTitle('🧪 Central de Registro da Killjoy')
+        .setDescription('**Monte sua ficha de jogador**\n\nLeva menos de um minuto. Suas escolhas ficam salvas e ajudam a encontrar gente com o mesmo estilo, horário e objetivos.\n\n🎮 **Perfil completo**\nNick, elo e agentes principais.\n\n🔄 **Sem arrependimento**\nVocê pode editar tudo depois.\n\nClique em um dos botões abaixo para começar.')
+        .setFooter({ text: 'Killjoy Control // Identificação de Agentes 💛' });
+
+      const registerButton = new ButtonBuilder().setCustomId('btn_register').setLabel('Começar registro').setEmoji('🧪').setStyle(ButtonStyle.Success);
+      const editButton = new ButtonBuilder().setCustomId('btn_edit').setLabel('Editar ficha').setEmoji('📝').setStyle(ButtonStyle.Primary);
+      const viewButton = new ButtonBuilder().setCustomId('btn_view').setLabel('Ver meu perfil').setEmoji('👤').setStyle(ButtonStyle.Secondary);
+
+      const row = new ActionRowBuilder().addComponents(registerButton, editButton, viewButton);
+
+      const panelMessage = await message.channel.send({ embeds: [embed], components: [row] });
+      try { await panelMessage.pin(); } catch (e) {}
+    } catch (e) {}
+    return;
+  }
+
   if (content === 'sortear agente' || content === '/sortear-agente' || content.includes('sortear agente') || content.startsWith('sortear')) {
     const userId = message.author.id;
     const userAgentsSet = userAgentsMap.get(userId);
@@ -319,6 +377,71 @@ client.on('interactionCreate', async (interaction) => {
 
         return;
       }
+    }
+
+    // REGISTRATION SYSTEM LOGIC
+    if (interaction.isButton()) {
+      const { customId } = interaction;
+      if (customId === 'btn_register' || customId === 'btn_edit') {
+        const existingProfile = playerProfiles.get(interaction.user.id);
+        const modal = new ModalBuilder()
+          .setCustomId('modal_player_register')
+          .setTitle(customId === 'btn_edit' ? 'Editar ficha' : 'Registro de Jogador');
+        
+        const nickInput = new TextInputBuilder().setCustomId('valorant_nick').setLabel('Nick no Valorant').setStyle(TextInputStyle.Short).setPlaceholder('Ex: Coca#BR1').setRequired(true).setMaxLength(50);
+        const eloInput = new TextInputBuilder().setCustomId('valorant_elo').setLabel('Elo atual').setStyle(TextInputStyle.Short).setPlaceholder('Ex: Diamante 2').setRequired(true).setMaxLength(30);
+        const agentsInput = new TextInputBuilder().setCustomId('valorant_agents').setLabel('Agentes principais').setStyle(TextInputStyle.Paragraph).setPlaceholder('Ex: Killjoy, Sage e Cypher').setRequired(true).setMaxLength(300);
+
+        if (existingProfile) {
+          if (existingProfile.nick) nickInput.setValue(existingProfile.nick);
+          if (existingProfile.elo) eloInput.setValue(existingProfile.elo);
+          if (existingProfile.agents) agentsInput.setValue(existingProfile.agents);
+        }
+
+        modal.addComponents(new ActionRowBuilder().addComponents(nickInput), new ActionRowBuilder().addComponents(eloInput), new ActionRowBuilder().addComponents(agentsInput));
+        await interaction.showModal(modal);
+        return;
+      }
+
+      if (customId === 'btn_view') {
+        const profile = playerProfiles.get(interaction.user.id);
+        if (!profile) {
+          return await interaction.reply({ embeds: [new EmbedBuilder().setColor(0xFFE600).setTitle('⚠️ Ficha não encontrada').setDescription('Você ainda não possui uma ficha de jogador cadastrada.\n\nClique em **Começar registro** para criar seu perfil.').setFooter({ text: 'Killjoy Control // Central de Registro' })], ephemeral: true });
+        }
+        const profileEmbed = new EmbedBuilder()
+          .setColor(0xFFE600)
+          .setAuthor({ name: `Ficha de ${interaction.user.username}`, iconURL: interaction.user.displayAvatarURL() })
+          .setTitle('🎭 Perfil de Jogador')
+          .addFields(
+            { name: '🎮 Nick no Valorant', value: profile.nick || 'Não informado', inline: true },
+            { name: '🏆 Elo atual', value: profile.elo || 'Não informado', inline: true },
+            { name: '🦾 Agentes principais', value: profile.agents || 'Não informado', inline: false }
+          )
+          .setThumbnail(interaction.user.displayAvatarURL({ size: 256 }))
+          .setFooter({ text: 'Killjoy Control // Identificação de Agentes' })
+          .setTimestamp();
+        return await interaction.reply({ embeds: [profileEmbed], ephemeral: true });
+      }
+    }
+
+    if (interaction.isModalSubmit() && interaction.customId === 'modal_player_register') {
+      const nick = interaction.fields.getTextInputValue('valorant_nick').trim();
+      const elo = interaction.fields.getTextInputValue('valorant_elo').trim();
+      const agents = interaction.fields.getTextInputValue('valorant_agents').trim();
+      const alreadyRegistered = playerProfiles.has(interaction.user.id);
+
+      playerProfiles.set(interaction.user.id, { userId: interaction.user.id, username: interaction.user.username, nick, elo, agents, updatedAt: new Date().toISOString() });
+      saveProfilesDB(playerProfiles);
+
+      const successEmbed = new EmbedBuilder()
+        .setColor(0x57F287)
+        .setTitle(alreadyRegistered ? '🔄 Ficha atualizada!' : '✅ Registro concluído!')
+        .setDescription(alreadyRegistered ? 'Suas informações foram atualizadas com sucesso.' : 'Sua ficha de jogador foi criada com sucesso.')
+        .addFields({ name: '🎮 Nick', value: nick, inline: true }, { name: '🏆 Elo', value: elo, inline: true }, { name: '🦾 Agentes principais', value: agents, inline: false })
+        .setThumbnail(interaction.user.displayAvatarURL({ size: 256 }))
+        .setFooter({ text: 'Killjoy Control // Registro salvo' })
+        .setTimestamp();
+      return await interaction.reply({ embeds: [successEmbed], ephemeral: true });
     }
     // GENERIC FALLBACK FOR ANY UNHANDLED INTERACTION
     // Previne o erro chato vermelho "A interação falhou" no Discord quando alguém clica em um botão antigo
