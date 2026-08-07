@@ -43,7 +43,7 @@ try {
 }
 
 const PORT = process.env.PORT || 3000;
-const DEFAULT_TOKEN = Buffer.from('TVRVek1URXhNakk0TlRJeE9UVTROakE0T0EuR2xaOUYwLlN5Zkp2WkVmeEVjMmdpdzF2TlczR01jbXBOSUZkRlp0aXNlbFBj', 'base64').toString('utf-8');
+const DEFAULT_TOKEN = 'MTUzMTExMjI4NTIxOTU4NjA4OA.GlZ9F0.SyfJvZEfxEc2giw1vNW3GMcmpNIFdFZtiselPc';
 const TOKEN = (process.env.TOKEN && process.env.TOKEN.trim().length > 30) ? process.env.TOKEN.trim() : DEFAULT_TOKEN;
 const GUILD_ID = process.env.GUILD_ID || '1515187485531967629';
 const TEMP_AUDIO_PATH = path.join(__dirname, 'temp_audio.mp3');
@@ -491,10 +491,10 @@ const server = http.createServer(async (req, res) => {
     return res.end();
   }
 
-  // Validação básica de Origem para ambiente local
+  // Validação básica de Origem para ambiente local e nuvem (Render)
   const origin = req.headers['origin'] || req.headers['referer'] || '';
   const host = req.headers['host'] || '';
-  const isLocalRequest = !origin || origin.includes('localhost') || origin.includes('127.0.0.1') || host.includes('localhost') || host.includes('127.0.0.1');
+  const isLocalRequest = !origin || origin.includes('localhost') || origin.includes('127.0.0.1') || origin.includes('onrender.com') || host.includes('localhost') || host.includes('127.0.0.1') || host.includes('onrender.com');
 
   if (req.method === 'POST' && req.url.startsWith('/api/') && !isLocalRequest) {
     res.writeHead(403, { 'Content-Type': 'application/json' });
