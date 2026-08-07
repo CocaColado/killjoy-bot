@@ -43,8 +43,7 @@ try {
 }
 
 const PORT = process.env.PORT || 3000;
-const DEFAULT_TOKEN = 'COLOQUE_O_TOKEN_NO_PAINEL_DO_RENDER';
-const TOKEN = process.env.TOKEN || DEFAULT_TOKEN;
+const TOKEN = process.env.DISCORD_TOKEN;
 const GUILD_ID = process.env.GUILD_ID || '1515187485531967629';
 const TEMP_AUDIO_PATH = path.join(__dirname, 'temp_audio.mp3');
 const CLIP_OUTPUT_PATH = path.join(__dirname, 'voice_clip_30s.mp3');
@@ -76,6 +75,7 @@ const client = new Client({
 });
 
 let botReady = false;
+let botLoginError = null;
 let defconLevel = 0;
 let currentVoiceChannelId = null;
 let currentVoiceChannelName = null;
@@ -200,9 +200,15 @@ audioPlayer.on('error', error => {
   playNextInQueue();
 });
 
-client.on('ready', async () => {
+client.once('ready', async () => {
   botReady = true;
-  console.log(`[Killjoy Control Center 35.0 CLEAN DM & MUSIC ARTWORK] Conectado como ${client.user.tag}`);
+  botLoginError = null;
+  console.log('======================================');
+  console.log('[DISCORD READY]');
+  console.log(`Bot: ${client.user.tag}`);
+  console.log(`ID: ${client.user.id}`);
+  console.log(`Servidores: ${client.guilds.cache.size}`);
+  console.log('======================================');
   
   // Register Slash Commands on Guild
   try {
@@ -344,7 +350,18 @@ client.on('messageCreate', async (message) => {
   }
 });
 
-client.login(TOKEN).catch(err => console.error('Erro ao conectar bot:', err));
+console.log('[Discord] Token presente:', Boolean(TOKEN));
+console.log('[Discord] Token length:', TOKEN?.length ?? 0);
+
+client.login(TOKEN)
+  .then(() => {
+    console.log('[Discord] Login iniciado com sucesso.');
+  })
+  .catch((error) => {
+    botReady = false;
+    botLoginError = error.message;
+    console.error('[Discord LOGIN ERROR]', error);
+  });
 
 async function ensureVoiceConnection(guild, channelId) {
   if (!activeConnection || currentVoiceChannelId !== channelId || activeConnection.state.status === VoiceConnectionStatus.Destroyed) {
@@ -531,8 +548,12 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'GET' && req.url === '/api/data') {
     if (!botReady) {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({ error: 'Bot ainda está conectando ao Discord...' }));
+      res.writeHead(503, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ 
+        error: 'Bot ainda não está conectado ao Discord.',
+        botReady: false,
+        discordError: botLoginError
+      }));
     }
 
     try {
