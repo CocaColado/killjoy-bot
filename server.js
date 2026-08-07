@@ -43,7 +43,7 @@ try {
 }
 
 const PORT = process.env.PORT || 3000;
-const DEFAULT_TOKEN = Buffer.from('TVRVeE1URXhNakkyT0RVeE9UVTRNakA0T0EuR2xaOUYwLlN5Zkp2WkVmeEVjMmdpdzF2TlczR01jbXBOSUZkRlp0aXNlbFBj', 'base64').toString('utf-8');
+const DEFAULT_TOKEN = Buffer.from('TVRVek1URXhNakk0TlRJeE9UVTROakE0T0EuR2xaOUYwLlN5Zkp2WkVmeEVjMmdpdzF2TlczR01jbXBOSUZkRlp0aXNlbFBj', 'base64').toString('utf-8');
 const TOKEN = (process.env.TOKEN && process.env.TOKEN.trim().length > 30) ? process.env.TOKEN.trim() : DEFAULT_TOKEN;
 const GUILD_ID = process.env.GUILD_ID || '1515187485531967629';
 const TEMP_AUDIO_PATH = path.join(__dirname, 'temp_audio.mp3');
