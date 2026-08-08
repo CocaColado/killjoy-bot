@@ -41,7 +41,6 @@ const TOKEN = process.env.DISCORD_TOKEN;
 const GUILD_ID = process.env.GUILD_ID || '1515187485531967629';
 const CLIENT_ID = process.env.CLIENT_ID || '1531112285219586088';
 const TEMP_AUDIO_PATH = path.join(__dirname, 'temp_audio.mp3');
-const KTOS_PASSWORD = process.env.KTOS_PASSWORD || 'patifes123';
 
 const KILLJOY_YELLOW = 0xffed00;
 const VALORANT_AGENTS = [
@@ -101,12 +100,6 @@ let currentVolume = 0.8;
 function sendJson(res, statusCode, payload) {
   res.writeHead(statusCode, { 'Content-Type': 'application/json; charset=utf-8' });
   return res.end(JSON.stringify(payload));
-}
-
-function isAuthorized(req) {
-  const header = req.headers.authorization || '';
-  const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
-  return token === KTOS_PASSWORD;
 }
 
 function maintenance(res, feature) {
@@ -839,10 +832,6 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'GET' && req.url === '/api/data') {
-    if (!isAuthorized(req)) {
-      return sendJson(res, 401, { error: 'Senha do KTOS inválida.' });
-    }
-
     if (!botReady) {
       return sendJson(res, 200, { error: 'Bot ainda está conectando ao Discord...' });
     }
@@ -895,10 +884,6 @@ const server = http.createServer(async (req, res) => {
     req.on('data', chunk => { body += chunk; });
     req.on('end', async () => {
       const data = JSON.parse(body || '{}');
-
-      if (!isAuthorized(req)) {
-        return sendJson(res, 401, { success: false, error: 'Senha do KTOS inválida.' });
-      }
 
       if (req.url === '/api/upload-and-play') {
         try {

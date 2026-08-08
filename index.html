@@ -1435,12 +1435,10 @@ function clearLogs(){
 
 async function api(path,body={},label){
   try{
-    const token = localStorage.getItem('ktos_token') || '';
     const r=await fetch(path,{
       method:'POST',
       headers:{
-        'Content-Type':'application/json',
-        'Authorization': `Bearer ${token}`
+        'Content-Type':'application/json'
       },
       body:JSON.stringify(body)
     });
@@ -1465,23 +1463,8 @@ async function api(path,body={},label){
 
 async function loadData(manual){
   try{
-    let token = localStorage.getItem('ktos_token');
-    if(!token) {
-      token = prompt('🔐 Acesso Restrito KTOS\nDigite a senha para acessar o painel (Padrão: patifes123):');
-      if (token) localStorage.setItem('ktos_token', token);
-    }
-
-    const r=await fetch('/api/data', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    const r=await fetch('/api/data');
     const d=await r.json();
-    if(r.status === 401){
-      localStorage.removeItem('ktos_token');
-      document.getElementById('sState').textContent='Senha do KTOS inválida. Atualize e digite novamente.';
-      document.getElementById('sDot').className='dot off';
-      showToast('Senha inválida. Vou pedir de novo no próximo carregamento.', 'error');
-      return;
-    }
     if(d.error){
       document.getElementById('sState').textContent=d.error;
       document.getElementById('sDot').className='dot off';
@@ -2325,6 +2308,69 @@ document.querySelectorAll('#chTypes button').forEach(b=>b.onclick=()=>{
   chType=b.dataset.k;
 });
 
+function cleanupKTOSInterface(){
+  const unavailable = [
+    'generateValorantSquads',
+    'toggleClutchMute',
+    'toggleMic',
+    'searchMusic',
+    'addToQueue',
+    'skipMusic',
+    'captureVoiceClip',
+    'adjustPitch',
+    'setEqualizerPreset',
+    'openDMChat',
+    'randomMove',
+    'voiceMute',
+    'voiceDeaf',
+    'unmute',
+    'kick',
+    'ban',
+    'addRoleAll',
+    'deleteSelectedChannel',
+    '/api/generate-squads',
+    '/api/clutch-mute',
+    '/api/toggle-mic',
+    '/api/search-music',
+    '/api/queue-audio',
+    '/api/skip-audio',
+    '/api/save-voice-clip',
+    '/api/set-pitch',
+    '/api/random-move',
+    '/api/voice-mute-member',
+    '/api/voice-deaf-member',
+    '/api/unmute-member',
+    '/api/kick-member',
+    '/api/ban-member',
+    '/api/send-dm',
+    '/api/get-dm-history',
+    '/api/add-role-all',
+    '/api/delete-channel'
+  ];
+
+  document.querySelectorAll('button[onclick]').forEach(button=>{
+    const action = button.getAttribute('onclick') || '';
+    if(unavailable.some(item=>action.includes(item))){
+      button.remove();
+    }
+  });
+
+  ['musicSearchInput','searchResultsList','queueListContainer','pitchSlider','pitchVal','deleteChannelSelect'].forEach(id=>{
+    const element = document.getElementById(id);
+    if(element){
+      const card = element.closest('.audio-player-card, .card, label.f, div');
+      if(card) card.style.display='none';
+      else element.style.display='none';
+    }
+  });
+
+  const term = document.getElementById('term');
+  if(term){
+    log('KTOS limpo: recursos em manutenção foram escondidos. Ficaram só ações ativas.', 'ok');
+  }
+}
+
+cleanupKTOSInterface();
 loadData(true);
 setInterval(loadData, 1500);
 </script>
