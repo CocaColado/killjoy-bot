@@ -1492,16 +1492,20 @@ async function loadData(manual){
       badgeText.textContent='Desconectada';
     }
 
-    if(d.currentVolume !== undefined && !document.activeElement.matches('#volSlider')) {
+    const volSlider = document.getElementById('volSlider');
+    const volVal = document.getElementById('volVal');
+    if(d.currentVolume !== undefined && volSlider && volVal && document.activeElement !== volSlider) {
       const vPercent = Math.round(d.currentVolume * 100);
-      document.getElementById('volSlider').value = vPercent;
-      document.getElementById('volVal').textContent = vPercent + '%';
+      volSlider.value = vPercent;
+      volVal.textContent = vPercent + '%';
     }
 
-    if(d.currentPitch !== undefined && !document.activeElement.matches('#pitchSlider')) {
+    const pitchSlider = document.getElementById('pitchSlider');
+    const pitchVal = document.getElementById('pitchVal');
+    if(d.currentPitch !== undefined && pitchSlider && pitchVal && document.activeElement !== pitchSlider) {
       const pPercent = Math.round(d.currentPitch * 100);
-      document.getElementById('pitchSlider').value = pPercent;
-      document.getElementById('pitchVal').textContent = (d.currentPitch).toFixed(2) + 'x';
+      pitchSlider.value = pPercent;
+      pitchVal.textContent = (d.currentPitch).toFixed(2) + 'x';
     }
 
     isAudioActive = !!d.currentlyPlaying;
@@ -1527,8 +1531,11 @@ async function loadData(manual){
     render();
     if(manual)log('Servidor sincronizado com sucesso.','ok');
   }catch(e){
-    document.getElementById('sState').textContent='offline';
-    document.getElementById('sDot').className='dot off';
+    const sState = document.getElementById('sState');
+    const sDot = document.getElementById('sDot');
+    if (sState && sState.textContent.toLowerCase().includes('offline')) sState.textContent='RECONECTANDO';
+    if (sDot && !DATA.botReady) sDot.className='dot off';
+    console.warn('[KTOS] Sync ignorado:', e);
   }
 }
 
