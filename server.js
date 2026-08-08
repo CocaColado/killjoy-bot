@@ -101,7 +101,7 @@ async function registerSlashCommands() {
     const commands = [
       new SlashCommandBuilder()
         .setName('sortear-agente')
-        .setDescription('Sortee um agente do Valorant aleatório para a sua partida!')
+        .setDescription('Sorteia um agente do VALORANT para a sua partida.')
         .toJSON(),
       new SlashCommandBuilder()
         .setName('ping')
@@ -168,7 +168,7 @@ async function registerSlashCommands() {
     ];
     const rest = new REST({ version: '10' }).setToken(TOKEN);
     await rest.put(Routes.applicationCommands(CLIENT_ID), { body: commands });
-    console.log('[Killjoy] Comandos registrados: /sortear-agente, /ping e /killjoy');
+    console.log('[Killjoy] Comandos registrados: /sortear-agente, /ping, /killjoy, /ajuda, /perfil, /registro, /lobby, /ranked, /agentes e /dica');
   } catch (err) {
     console.error('[Killjoy] Erro ao registrar comandos:', err.message);
   }

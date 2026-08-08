@@ -3,3 +3,6 @@ dist/
 .env
 *.log
 server.backup-before-codex-bot-cleanup.js
+data/
+control-center/
+temp_audio.mp3
