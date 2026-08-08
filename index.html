@@ -571,6 +571,41 @@ summary.ia-summary:hover {
 button.act:active, .brand-i:active, .sync:active, .themes button:active {
   transform: scale(0.95) !important;
 }
+/* KTOS V2 - MODO DE EDIÇÃO & LAYOUT */
+body.edit-mode .ktos-draggable-panel {
+  resize: both !important;
+  overflow: hidden !important;
+  border: 1px dashed var(--accent) !important;
+  box-shadow: inset 0 0 12px rgba(255, 230, 0, 0.1) !important;
+}
+body.edit-mode .card-edit-overlay {
+  display: flex !important;
+}
+.card-edit-overlay {
+  display: none;
+  position: absolute;
+  top: 0; right: 0; left: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+  padding: 4px 8px;
+  justify-content: flex-end;
+  gap: 8px;
+  z-index: 10;
+  border-bottom: 1px dashed var(--accent);
+}
+.card-edit-overlay button {
+  background: none; border: none; color: #fff; cursor: pointer;
+  font-size: 14px; transition: color 0.2s; padding: 2px 4px;
+}
+.card-edit-overlay button:hover { color: var(--accent); }
+.card-edit-overlay .drag-handle { cursor: grab; flex: 1; text-align: left; font-size:11px; font-weight:800; color:var(--accent); line-height:22px; font-family:'Orbitron'; }
+.card-edit-overlay .drag-handle:active { cursor: grabbing; }
+
+/* Cores de borda customizadas para módulos */
+.ktos-draggable-panel[data-accent="classic"] { border-color: var(--accent) !important; }
+.ktos-draggable-panel[data-accent="cyan"] { border-color: var(--cyan) !important; }
+.ktos-draggable-panel[data-accent="void"] { border-color: var(--void) !important; }
+.ktos-draggable-panel[data-accent="red"] { border-color: var(--red) !important; }
 </style>
 </head>
 <body>
@@ -995,86 +1030,46 @@ button.act:active, .brand-i:active, .sync:active, .themes button:active {
 
 </main>
 
-<!-- MODAL MASTER SETTINGS (ENGRENAGEM CONFIGURAÇÕES DA DASHBOARD) -->
+<!-- MODAL MASTER SETTINGS (ENGRENAGEM PERSONALIZAÇÃO) -->
 <div id="masterSettingsModal" style="display:none; position:fixed; inset:0; background:rgba(4, 7, 12, 0.88); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); z-index:9999; place-items:center; animation:fadeIn .2s ease;">
-  <div style="background:rgba(15, 23, 36, 0.96); border:1px solid var(--accent); border-radius:var(--radius-lg); width:92%; max-width:580px; max-height:85vh; overflow-y:auto; padding:24px; box-shadow:0 0 40px var(--accent-glow); position:relative;">
+  <div style="background:rgba(15, 23, 36, 0.96); border:1px solid var(--accent); border-radius:var(--radius-lg); width:92%; max-width:400px; max-height:85vh; overflow-y:auto; padding:24px; box-shadow:0 0 40px var(--accent-glow); position:relative;">
     <button onclick="closeMasterSettingsModal()" style="position:absolute; right:18px; top:18px; background:rgba(255,255,255,0.06); border:1px solid var(--border-subtle); color:#fff; border-radius:50%; width:30px; height:30px; font-size:15px; cursor:pointer; display:grid; place-items:center;">&times;</button>
 
-    <h2 style="font-size:18px; color:var(--accent); font-family:'Orbitron'; margin-bottom:4px; display:flex; align-items:center; gap:8px"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg> CONFIGURAÇÕES MASTER KTOS</h2>
-    <p style="font-size:11px; color:var(--muted); margin-bottom:16px">Ajustes visuais de tema, presença no Discord, tipografia e escala.</p>
+    <h2 style="font-size:18px; color:var(--accent); font-family:'Orbitron'; margin-bottom:4px; display:flex; align-items:center; gap:8px"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg> PERSONALIZAÇÃO</h2>
+    <p style="font-size:11px; color:var(--muted); margin-bottom:16px">Modo de Edição KTOS V2</p>
 
     <div style="display:flex; flex-direction:column; gap:14px">
       
-      <!-- Tema Visual (Logitech G Hub Style) -->
-      <label class="f"><span style="display:flex; align-items:center; gap:6px"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.92 0 1.7-.71 1.7-1.63 0-.44-.18-.85-.46-1.15-.27-.31-.44-.72-.44-1.18 0-.92.75-1.67 1.67-1.67h1.9c3.08 0 5.63-2.55 5.63-5.63 0-5.38-4.47-8.74-10-8.74z"/></svg> Tema de Cores do Sistema:</span>
-        <div class="themes" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-top:4px">
-          <button data-theme="classic" class="act on" style="justify-content:center">Classic Ouro</button>
-          <button data-theme="astra" class="act" style="justify-content:center">Astra Void</button>
-          <button data-theme="jett" class="act" style="justify-content:center">Jett Red</button>
-        </div>
-      </label>
+      <button class="act p" style="width:100%; display:flex; align-items:center; justify-content:center; gap:6px" onclick="toggleEditMode()" id="btnToggleEditMode"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Editar Layout (Ativar)</button>
 
-      <!-- Presença & Status do Bot -->
       <div style="border-top:1px solid var(--border-subtle); padding-top:12px">
-        <label class="f"><span style="display:flex; align-items:center; gap:6px"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg> Presença & Atividade no Discord:</span></label>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:4px">
-          <div>
-            <label class="f"><span>Status</span>
-              <select id="presStatus" onchange="presPreview()">
-                <option value="online">Online</option>
-                <option value="idle">Ausente (Idle)</option>
-                <option value="dnd">Ocupado (DND)</option>
-              </select>
-            </label>
-            <label class="f" style="margin-top:6px"><span>Tipo</span>
-              <select id="presTypeSel" onchange="presPreview()">
-                <option value="Playing">Jogando</option>
-                <option value="Watching">Assistindo</option>
-                <option value="Listening">Ouvindo</option>
-                <option value="Streaming">Transmitindo</option>
-              </select>
-            </label>
-          </div>
-          <div>
-            <label class="f"><span>Texto da Atividade</span>
-              <input id="presText" value="calibrando os nanorrobôs" oninput="presPreview()">
-            </label>
-            <button class="act p" style="width:100%; margin-top:12px; font-size:10.5px; display:flex; align-items:center; justify-content:center; gap:6px" onclick="sendPresence()"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Atualizar Status no Discord</button>
-          </div>
+        <label class="f"><span style="color:var(--accent); font-weight:700">MÓDULOS (Visibilidade)</span></label>
+        <div style="display:flex; flex-direction:column; gap:6px; margin-top:8px" id="moduleTogglesList">
+          <label style="display:flex; align-items:center; gap:8px; font-size:12px"><input type="checkbox" checked onchange="toggleModuleVisibility('status', this.checked)"> Status (KPIs)</label>
+          <label style="display:flex; align-items:center; gap:8px; font-size:12px"><input type="checkbox" checked onchange="toggleModuleVisibility('terminal', this.checked)"> Terminal Logs</label>
+          <label style="display:flex; align-items:center; gap:8px; font-size:12px"><input type="checkbox" checked onchange="toggleModuleVisibility('quickactions', this.checked)"> Comandos Rápidos</label>
         </div>
       </div>
 
-      <!-- Tipografia, Paleta & Escala -->
       <div style="border-top:1px solid var(--border-subtle); padding-top:12px; display:flex; flex-direction:column; gap:12px">
-        <label class="f"><span style="display:flex; align-items:center; gap:6px"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg> Tipografia de Letra:</span>
-          <select id="masterFontSelector" onchange="changeDashboardFont(this.value)">
-            <option value="Outfit">Outfit (Clean HD)</option>
-            <option value="Orbitron">Orbitron (Sci-Fi Tático)</option>
-            <option value="JetBrains Mono">JetBrains Mono (Dev Code)</option>
-          </select>
-        </label>
-
-        <label class="f"><span style="display:flex; align-items:center; gap:6px"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.92 0 1.7-.71 1.7-1.63 0-.44-.18-.85-.46-1.15-.27-.31-.44-.72-.44-1.18 0-.92.75-1.67 1.67-1.67h1.9c3.08 0 5.63-2.55 5.63-5.63 0-5.38-4.47-8.74-10-8.74z"/></svg> Cor de Destaque Personalizada:</span>
-          <div style="display:flex; gap:8px; align-items:center">
-            <input type="color" id="masterColorPicker" value="#ffe600" style="height:36px; padding:2px; flex:1" onchange="changeAccentColor(this.value)">
-            <button class="act" style="min-width:54px; padding:4px 6px; font-size:10px" onclick="changeAccentColor('#ffe600')">Ouro</button>
-            <button class="act" style="min-width:54px; padding:4px 6px; font-size:10px" onclick="changeAccentColor('#00f5d4')">Cyan</button>
-            <button class="act" style="min-width:54px; padding:4px 6px; font-size:10px" onclick="changeAccentColor('#a855f7')">Void</button>
-            <button class="act" style="min-width:54px; padding:4px 6px; font-size:10px" onclick="changeAccentColor('#ff4655')">Red</button>
+        <label class="f"><span style="color:var(--accent); font-weight:700">APARÊNCIA</span></label>
+        <label class="f"><span>Tema do Painel:</span>
+          <div class="themes" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-top:4px">
+            <button data-theme="classic" class="act on" style="justify-content:center">Classic</button>
+            <button data-theme="astra" class="act" style="justify-content:center">Astra</button>
+            <button data-theme="jett" class="act" style="justify-content:center">Jett</button>
           </div>
         </label>
-
-        <label class="f"><span style="display:flex; align-items:center; gap:6px"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg> Escala Visual da Interface:</span>
+        <label class="f"><span>Densidade Visual:</span>
           <select onchange="changeUIScale(this.value)">
-            <option value="1rem">Normal (Padrão HD)</option>
-            <option value="1.08rem">Grande (Texto Maior)</option>
-            <option value="1.16rem">Extra Grande (Alta Visibilidade)</option>
+            <option value="1rem">Padrão</option>
+            <option value="1.08rem">Largo</option>
           </select>
         </label>
       </div>
 
       <div class="btns" style="margin-top:8px">
-        <button class="act p" style="width:100%; display:flex; align-items:center; justify-content:center; gap:6px" onclick="closeMasterSettingsModal()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> SALVAR & APLICAR ALTERAÇÕES</button>
+        <button class="act d" style="width:100%; display:flex; align-items:center; justify-content:center; gap:6px" onclick="resetLayoutDefault()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg> Restaurar Layout Padrão</button>
       </div>
 
     </div>
