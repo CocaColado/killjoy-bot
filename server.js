@@ -38,6 +38,7 @@ const TOKEN = process.env.DISCORD_TOKEN;
 const GUILD_ID = process.env.GUILD_ID || '1515187485531967629';
 const CLIENT_ID = process.env.CLIENT_ID || '1531112285219586088';
 const TEMP_AUDIO_PATH = path.join(__dirname, 'temp_audio.mp3');
+const KTOS_PASSWORD = process.env.KTOS_PASSWORD || 'patifes123';
 
 const KILLJOY_YELLOW = 0xffed00;
 const VALORANT_AGENTS = [
@@ -78,6 +79,26 @@ const audioPlayer = createAudioPlayer({
 
 let activeConnection = null;
 let currentFfmpegProc = null;
+let currentAudioResource = null;
+let currentVolume = 0.8;
+
+function sendJson(res, statusCode, payload) {
+  res.writeHead(statusCode, { 'Content-Type': 'application/json; charset=utf-8' });
+  return res.end(JSON.stringify(payload));
+}
+
+function isAuthorized(req) {
+  const header = req.headers.authorization || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+  return token === KTOS_PASSWORD;
+}
+
+function maintenance(res, feature) {
+  return sendJson(res, 501, {
+    success: false,
+    error: `${feature} ainda está em manutenção. Vou religar essa parte com calma, sem quebrar a Killjoy.`
+  });
+}
 
 audioPlayer.on(AudioPlayerStatus.Playing, () => {
   console.log('[Killjoy Voice Engine] Tocando áudio ao vivo na call!');
@@ -89,6 +110,7 @@ audioPlayer.on(AudioPlayerStatus.Idle, () => {
     try { currentFfmpegProc.kill('SIGKILL'); } catch (e) {}
     currentFfmpegProc = null;
   }
+  currentAudioResource = null;
 });
 
 audioPlayer.on('error', error => {
@@ -473,11 +495,13 @@ function stopAudioExecution() {
       try { currentFfmpegProc.kill('SIGKILL'); } catch (e) {}
       currentFfmpegProc = null;
     }
+    currentAudioResource = null;
   } catch (e) {}
 }
 
 function playAudioInVoice(audioPathOrUrl, volume = 0.8) {
   stopAudioExecution();
+  currentVolume = parseFloat(volume) || 0.8;
 
   console.log(`[Killjoy Voice Engine] Transmitindo MP3 via FFmpeg: ${audioPathOrUrl}`);
 
@@ -494,9 +518,10 @@ function playAudioInVoice(audioPathOrUrl, volume = 0.8) {
   });
 
   if (resource.volume) {
-    resource.volume.setVolume(parseFloat(volume));
+    resource.volume.setVolume(currentVolume);
   }
 
+  currentAudioResource = resource;
   audioPlayer.play(resource);
 }
 
@@ -511,9 +536,12 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'GET' && req.url === '/api/data') {
+    if (!isAuthorized(req)) {
+      return sendJson(res, 401, { error: 'Senha do KTOS inválida.' });
+    }
+
     if (!botReady) {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({ error: 'Bot ainda está conectando ao Discord...' }));
+      return sendJson(res, 200, { error: 'Bot ainda está conectando ao Discord...' });
     }
 
     try {
@@ -540,10 +568,10 @@ const server = http.createServer(async (req, res) => {
         roles: m.roles.cache.map(r => r.name).filter(r => r !== '@everyone')
       }));
 
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({
+      return sendJson(res, 200, {
         botTag: client.user.tag,
         defconLevel,
+        currentVolume,
         totalMembers: guild.memberCount,
         totalRoles: guild.roles.cache.size,
         currentVoiceChannelId,
@@ -553,10 +581,9 @@ const server = http.createServer(async (req, res) => {
         voiceChannels,
         voiceMembers,
         allMembers
-      }));
+      });
     } catch (err) {
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({ error: err.message }));
+      return sendJson(res, 500, { error: err.message });
     }
   }
 
@@ -565,6 +592,10 @@ const server = http.createServer(async (req, res) => {
     req.on('data', chunk => { body += chunk; });
     req.on('end', async () => {
       const data = JSON.parse(body || '{}');
+
+      if (!isAuthorized(req)) {
+        return sendJson(res, 401, { success: false, error: 'Senha do KTOS inválida.' });
+      }
 
       if (req.url === '/api/upload-and-play') {
         try {
@@ -653,6 +684,43 @@ const server = http.createServer(async (req, res) => {
           return res.end(JSON.stringify({ success: false, error: err.message }));
         }
       }
+
+      if (req.url === '/api/set-volume') {
+        currentVolume = Math.max(0, Math.min(2, parseFloat(data.volume ?? currentVolume) || currentVolume));
+        if (currentAudioResource?.volume) {
+          currentAudioResource.volume.setVolume(currentVolume);
+        }
+        return sendJson(res, 200, { success: true, currentVolume });
+      }
+
+      if (req.url === '/api/pause-audio') {
+        audioPlayer.pause(true);
+        return sendJson(res, 200, { success: true });
+      }
+
+      if (req.url === '/api/resume-audio') {
+        audioPlayer.unpause();
+        return sendJson(res, 200, { success: true });
+      }
+
+      if (req.url === '/api/set-pitch') return maintenance(res, 'Pitch de áudio');
+      if (req.url === '/api/search-music') return maintenance(res, 'Busca de música');
+      if (req.url === '/api/queue-audio') return maintenance(res, 'Fila de áudio');
+      if (req.url === '/api/skip-audio') return maintenance(res, 'Pular música');
+      if (req.url === '/api/save-voice-clip') return maintenance(res, 'Clipe de voz');
+      if (req.url === '/api/generate-squads') return maintenance(res, 'Sorteio de squads');
+      if (req.url === '/api/clutch-mute') return maintenance(res, 'Modo clutch');
+      if (req.url === '/api/toggle-mic') return maintenance(res, 'Controle de microfone da Killjoy');
+      if (req.url === '/api/random-move') return maintenance(res, 'Roleta de call');
+      if (req.url === '/api/voice-mute-member') return maintenance(res, 'Mute de voz');
+      if (req.url === '/api/voice-deaf-member') return maintenance(res, 'Ensurdecer membro');
+      if (req.url === '/api/unmute-member') return maintenance(res, 'Desmutar membro');
+      if (req.url === '/api/kick-member') return maintenance(res, 'Expulsar membro');
+      if (req.url === '/api/ban-member') return maintenance(res, 'Banir membro');
+      if (req.url === '/api/send-dm') return maintenance(res, 'Enviar DM');
+      if (req.url === '/api/get-dm-history') return maintenance(res, 'Histórico de DM');
+      if (req.url === '/api/add-role-all') return maintenance(res, 'Atribuir cargo em massa');
+      if (req.url === '/api/delete-channel') return maintenance(res, 'Excluir canal');
 
       if (req.url === '/api/move') {
         try {

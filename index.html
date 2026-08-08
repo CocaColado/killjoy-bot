@@ -1475,6 +1475,13 @@ async function loadData(manual){
       headers: { 'Authorization': `Bearer ${token}` }
     });
     const d=await r.json();
+    if(r.status === 401){
+      localStorage.removeItem('ktos_token');
+      document.getElementById('sState').textContent='Senha do KTOS inválida. Atualize e digite novamente.';
+      document.getElementById('sDot').className='dot off';
+      showToast('Senha inválida. Vou pedir de novo no próximo carregamento.', 'error');
+      return;
+    }
     if(d.error){
       document.getElementById('sState').textContent=d.error;
       document.getElementById('sDot').className='dot off';
