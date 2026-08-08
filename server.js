@@ -178,38 +178,40 @@ async function cleanupOldAgentSelectorPanels() {
   try {
     const guild = await client.guilds.fetch(GUILD_ID);
     await guild.channels.fetch();
-    const channel = guild.channels.cache.find(item =>
+    const channels = guild.channels.cache.filter(item =>
       item.type === ChannelType.GuildText &&
       item.name.toLowerCase().includes('agentes')
     );
 
-    if (!channel?.messages) return;
+    let deletedPanels = 0;
 
-    const messages = await channel.messages.fetch({ limit: 100 });
-    const oldPanels = messages.filter(message => {
-      if (message.author.id !== client.user.id) return false;
-      const title = message.embeds[0]?.title ?? '';
-      const text = [
-        title,
-        message.embeds[0]?.description ?? '',
-        ...((message.embeds[0]?.fields ?? []).flatMap(field => [field.name, field.value]))
-      ].join(' ');
-      return (
-        message.components.length > 0 ||
-        text.includes('SELETOR DE AGENTES') ||
-        text.includes('CENTRAL DE AGENTES') ||
-        text.includes('Arsenal de Agentes') ||
-        text.includes('Agentes no sorteio')
-      );
-    });
+    for (const channel of channels.values()) {
+      if (!channel?.messages) continue;
 
-    for (const message of oldPanels.values()) {
-      await message.delete().catch(() => null);
+      const messages = await channel.messages.fetch({ limit: 100 });
+      const oldPanels = messages.filter(message => {
+        if (message.author.id !== client.user.id) return false;
+        const title = message.embeds[0]?.title ?? '';
+        const text = [
+          title,
+          message.embeds[0]?.description ?? '',
+          ...((message.embeds[0]?.fields ?? []).flatMap(field => [field.name, field.value]))
+        ].join(' ');
+        return (
+          message.components.length > 0 ||
+          text.includes('SELETOR DE AGENTES') ||
+          text.includes('CENTRAL DE AGENTES') ||
+          text.includes('Arsenal de Agentes') ||
+          text.includes('Agentes no sorteio')
+        );
+      });
+
+      for (const message of oldPanels.values()) {
+        await message.delete().then(() => { deletedPanels += 1; }).catch(() => null);
+      }
     }
 
-    if (oldPanels.size > 0) {
-      console.log(`[Killjoy] Limpei ${oldPanels.size} painel(is) antigo(s) de agentes.`);
-    }
+    console.log(`[Killjoy] Limpeza de agentes: ${channels.size} canal(is), ${deletedPanels} painel(is) removido(s).`);
   } catch (err) {
     console.warn('[Killjoy] Não consegui limpar painéis antigos de agentes:', err.message);
   }
