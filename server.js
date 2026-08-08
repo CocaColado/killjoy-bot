@@ -43,6 +43,7 @@ const TEMP_AUDIO_PATH = path.join(__dirname, 'temp_audio.mp3');
 
 const KILLJOY_YELLOW = 0xffed00;
 const XODO_ROLE_NAME = '🧸Xodó do Coca';
+const AGENTS_CHANNEL_NAME = '🎯・agentes';
 const VALORANT_AGENTS = [
   'Jett', 'Reyna', 'Raze', 'Phoenix', 'Yoru', 'Neon', 'Iso',
   'Sova', 'Breach', 'Skye', 'KAY/O', 'Fade', 'Gekko', 'Tejo',
@@ -96,6 +97,41 @@ async function ensureXodoRole(guild) {
     });
   }
   return role;
+}
+
+async function ensureAgentsChannel(guild, shouldPostPanel = false) {
+  let channel = guild.channels.cache.find(existing =>
+    existing.type === ChannelType.GuildText &&
+    ['agentes', AGENTS_CHANNEL_NAME].includes(existing.name)
+  );
+
+  if (!channel) {
+    channel = await guild.channels.create({
+      name: AGENTS_CHANNEL_NAME,
+      type: ChannelType.GuildText,
+      topic: 'Roleta de agentes da Killjoy para os Patifes.'
+    });
+  }
+
+  if (shouldPostPanel) {
+    await channel.send({
+      embeds: [
+        new EmbedBuilder()
+          .setColor(KILLJOY_YELLOW)
+          .setTitle('🎰 ROLETA DE AGENTES')
+          .setDescription([
+            'Canal recriado e calibrado.',
+            '',
+            'Use `/sortear-agente` em qualquer canal permitido, ou clique no botão abaixo para girar a roleta por aqui.'
+          ].join('\n'))
+          .setFooter({ text: 'Killjoy dos Patifes — painel de agentes' })
+          .setTimestamp()
+      ],
+      components: [buildAgentRouletteRow()]
+    });
+  }
+
+  return channel;
 }
 
 const killjoyLines = [
@@ -224,6 +260,11 @@ async function registerSlashCommands() {
             .setDescription('Pessoa escolhida pelo Coca.')
             .setRequired(true))
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles)
+        .toJSON(),
+      new SlashCommandBuilder()
+        .setName('setup-agentes')
+        .setDescription('Recria o canal/painel da roleta de agentes.')
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
         .toJSON()
     ];
     const rest = new REST({ version: '10' }).setToken(TOKEN);
@@ -239,6 +280,8 @@ client.on('ready', async () => {
   console.log(`[Killjoy] Online como ${client.user.tag}`);
   try {
     await registerSlashCommands();
+    const guild = await client.guilds.fetch(GUILD_ID);
+    await ensureAgentsChannel(guild, false);
     rotatePresence();
     setInterval(rotatePresence, 10 * 60 * 1000);
   } catch (e) {
@@ -457,6 +500,25 @@ client.on('interactionCreate', async interaction => {
           .setDescription(`${member} agora carrega o cargo **${XODO_ROLE_NAME}**.\n\nCuidado: fofura com certificado oficial dos Patifes.`)
           .setTimestamp()
       ]
+    });
+    return;
+  }
+
+  if (interaction.commandName === 'setup-agentes') {
+    if (!interaction.inGuild()) {
+      await interaction.reply({ content: 'Esse comando só funciona dentro do servidor.', ephemeral: true });
+      return;
+    }
+
+    if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageChannels)) {
+      await interaction.reply({ content: 'Só quem pode gerenciar canais consegue recriar o painel de agentes.', ephemeral: true });
+      return;
+    }
+
+    const channel = await ensureAgentsChannel(interaction.guild, true);
+    await interaction.reply({
+      content: `Canal de agentes pronto: ${channel}`,
+      ephemeral: true
     });
     return;
   }
