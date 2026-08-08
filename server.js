@@ -470,315 +470,333 @@ client.on('ready', async () => {
   }
 });
 
+async function safeReply(interaction, options) {
+  try {
+    if (interaction.deferred || interaction.replied) return await interaction.editReply(options);
+    return await interaction.reply(options);
+  } catch (err) {
+    if (err?.code === 10062 || err?.code === 40060) {
+      console.warn('[Killjoy] Interacao expirada/ja respondida:', err.code);
+      return null;
+    }
+    throw err;
+  }
+}
+
 client.on('interactionCreate', async interaction => {
-  if (interaction.isStringSelectMenu() && interaction.customId.startsWith('agent_panel_select_')) {
-    const selected = new Set(getUserAgents(interaction.user.id));
-    const index = Number(interaction.customId.replace('agent_panel_select_', ''));
-    const chunk = VALORANT_AGENTS.slice(index * 25, index * 25 + 25);
-
-    for (const agent of chunk) selected.delete(agent);
-    for (const agent of interaction.values) selected.add(agent);
-
-    agentPools[interaction.user.id] = [...selected].filter(agent => VALORANT_AGENTS.includes(agent));
-    saveAgentPools();
-
-    await interaction.reply({
+  try {  
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith('agent_panel_select_')) {
+      const selected = new Set(getUserAgents(interaction.user.id));
+      const index = Number(interaction.customId.replace('agent_panel_select_', ''));
+      const chunk = VALORANT_AGENTS.slice(index * 25, index * 25 + 25);
+  
+      for (const agent of chunk) selected.delete(agent);
+      for (const agent of interaction.values) selected.add(agent);
+  
+      agentPools[interaction.user.id] = [...selected].filter(agent => VALORANT_AGENTS.includes(agent));
+      saveAgentPools();
+  
+      await safeReply(interaction, {
       content: `Salvei sua lista com **${agentPools[interaction.user.id].length}** agente(s). Agora pode clicar em **Sortear**.`,
       ephemeral: true
     });
-    return;
-  }
-
-  if (interaction.isButton() && interaction.customId === 'agent_panel_roll') {
-    const pool = getUserAgents(interaction.user.id);
-    if (!pool.length) {
-      await interaction.reply({ content: 'VocÃª ainda nÃ£o escolheu agentes no painel. Marca alguns nos menus primeiro.', ephemeral: true });
       return;
     }
-    await runAgentRoulette(interaction, pool);
-    return;
-  }
-
-  if (interaction.isButton() && interaction.customId === 'agent_panel_show') {
-    await interaction.reply({ embeds: [buildAgentsListEmbed(interaction.user)], ephemeral: true });
-    return;
-  }
-
-  if (interaction.isButton() && interaction.customId === 'agent_panel_clear') {
-    delete agentPools[interaction.user.id];
-    saveAgentPools();
-    await interaction.reply({ content: 'Sua lista de agentes foi limpa.', ephemeral: true });
-    return;
-  }
-
-  if (interaction.isStringSelectMenu() && interaction.customId.startsWith('agent_select_')) {
-    const selected = new Set(getUserAgents(interaction.user.id));
-    const index = Number(interaction.customId.replace('agent_select_', ''));
-    const chunk = VALORANT_AGENTS.slice(index * 25, index * 25 + 25);
-
-    for (const agent of chunk) selected.delete(agent);
-    for (const agent of interaction.values) selected.add(agent);
-
-    agentPools[interaction.user.id] = [...selected].filter(agent => VALORANT_AGENTS.includes(agent));
-    saveAgentPools();
-
-    await interaction.update({
-      embeds: [buildAgentSetupEmbed(interaction.user)],
-      components: [...buildAgentSelectRows(interaction.user.id), buildAgentControlRow()]
-    });
-    return;
-  }
-
-  if (interaction.isButton() && interaction.customId === 'agent_roll_saved') {
-    const pool = getUserAgents(interaction.user.id);
-    if (!pool.length) {
-      await interaction.reply({ content: 'Escolhe pelo menos um agente antes de girar a roleta.', ephemeral: true });
+  
+    if (interaction.isButton() && interaction.customId === 'agent_panel_roll') {
+      const pool = getUserAgents(interaction.user.id);
+      if (!pool.length) {
+        await safeReply(interaction, { content: 'Voce ainda nao escolheu agentes no painel. Marca alguns nos menus primeiro.', ephemeral: true });
+        return;
+      }
+      await runAgentRoulette(interaction, pool);
       return;
     }
-    await runAgentRoulette(interaction, pool);
-    return;
-  }
-
-  if (interaction.isButton() && interaction.customId === 'agent_show_saved') {
-    await interaction.reply({ embeds: [buildAgentsListEmbed(interaction.user)], ephemeral: true });
-    return;
-  }
-
-  if (interaction.isButton() && interaction.customId === 'agent_clear_saved') {
-    delete agentPools[interaction.user.id];
-    saveAgentPools();
-    await interaction.update({
-      embeds: [buildAgentSetupEmbed(interaction.user)],
-      components: [...buildAgentSelectRows(interaction.user.id), buildAgentControlRow()]
-    });
-    return;
-  }
-
-  if (!interaction.isChatInputCommand()) return;
-
-  if (interaction.commandName === 'ping') {
-    const latency = Math.max(0, Date.now() - interaction.createdTimestamp);
-    await interaction.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(KILLJOY_YELLOW)
-          .setTitle('ðŸŸ¢ Killjoy online')
-          .setDescription(`Tudo certo por aqui.\nLatÃªncia: **${latency}ms**`)
-          .setFooter({ text: 'Relax, eu jÃ¡ cuidei de tudo.' })
-          .setTimestamp()
-      ],
-      ephemeral: true
-    });
-    return;
-  }
-
-  if (interaction.commandName === 'killjoy') {
-    await interaction.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(KILLJOY_YELLOW)
-          .setTitle('KILLJOY // CENTRAL DOS PATIFES')
-          .setDescription([
-            'Eu cuido do laboratÃ³rio enquanto vocÃªs inventam moda.',
-            '',
-            '**Comandos Ãºteis**',
-            '`/sortear-agente` â€” escolhe um agente de VALORANT',
-            '`/ping` â€” confere se estou acordada',
-            '',
-            'Sem drama. SÃ³ tecnologia aprovada e caos supervisionado. âš¡'
-          ].join('\n'))
-          .setFooter({ text: 'Killjoy dos Patifes ðŸ’›' })
-          .setTimestamp()
-      ],
-      ephemeral: true
-    });
-    return;
-  }
-
-  if (interaction.commandName === 'ajuda') {
-    await interaction.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(KILLJOY_YELLOW)
-          .setTitle('KILLJOY // COMANDOS')
-          .setDescription([
-            '`/killjoy` â€” painel rÃ¡pido da bot',
-            '`/ping` â€” teste de vida',
-            '`/registro` â€” salva seu jogo/rank bÃ¡sico',
-            '`/perfil` â€” mostra um perfil',
-            '`/lobby` â€” chama gente pra jogar',
-            '`/ranked` â€” chamada rÃ¡pida pra ranked',
-            '`/sortear-agente` â€” sorteia agente de VALORANT',
-            '`/agentes` â€” lista agentes do sorteio',
-            '`/dica` â€” dica rÃ¡pida da Killjoy',
-            '',
-            'Clipes continuam removidos, como vocÃª pediu.'
-          ].join('\n'))
-          .setFooter({ text: 'Patifes sob controle. Quase sempre.' })
-          .setTimestamp()
-      ],
-      ephemeral: true
-    });
-    return;
-  }
-
-  if (interaction.commandName === 'registro') {
-    const game = interaction.options.getString('jogo') || 'nÃ£o informado';
-    const rank = interaction.options.getString('rank') || 'nÃ£o informado';
-    playerProfiles.set(interaction.user.id, {
-      game,
-      rank,
-      updatedAt: new Date()
-    });
-    await interaction.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(KILLJOY_YELLOW)
-          .setTitle('âœ… Registro atualizado')
-          .setDescription(`Perfil calibrado para ${interaction.user}.\n\n**Jogo:** ${game}\n**Rank:** ${rank}`)
-          .setFooter({ text: 'Dados temporÃ¡rios atÃ© a prÃ³xima reinicializaÃ§Ã£o.' })
-          .setTimestamp()
-      ],
-      ephemeral: true
-    });
-    return;
-  }
-
-  if (interaction.commandName === 'perfil') {
-    const target = interaction.options.getUser('membro') || interaction.user;
-    const profile = playerProfiles.get(target.id);
-    await interaction.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(KILLJOY_YELLOW)
-          .setTitle(`ðŸ‘¤ Perfil de ${target.globalName || target.username}`)
-          .setThumbnail(target.displayAvatarURL({ extension: 'png', size: 128 }))
-          .setDescription(profile
-            ? `**Jogo:** ${profile.game}\n**Rank:** ${profile.rank}\n**Atualizado:** <t:${Math.floor(profile.updatedAt.getTime() / 1000)}:R>`
-            : 'Ainda nÃ£o encontrei cadastro para esse membro.\nUse `/registro` para calibrar o perfil.')
-          .setFooter({ text: 'Killjoy // Patifes' })
-          .setTimestamp()
-      ]
-    });
-    return;
-  }
-
-  if (interaction.commandName === 'lobby') {
-    const game = interaction.options.getString('jogo') || 'VALORANT';
-    const slots = interaction.options.getInteger('vagas') || 5;
-    await interaction.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(KILLJOY_YELLOW)
-          .setTitle('ðŸŽ® Lobby aberto')
-          .setDescription(`${interaction.user} estÃ¡ montando lobby de **${game}**.\n\n**Vagas:** ${slots}\nReage aÃ­ ou chama no chat antes que a fila vire bagunÃ§a.`)
-          .setFooter({ text: 'OrganizaÃ§Ã£o por Killjoy, execuÃ§Ã£o pelos Patifes.' })
-          .setTimestamp()
-      ]
-    });
-    return;
-  }
-
-  if (interaction.commandName === 'ranked') {
-    const game = interaction.options.getString('jogo') || 'VALORANT';
-    await interaction.reply({
-      content: '@here',
-      embeds: [
-        new EmbedBuilder()
-          .setColor(KILLJOY_YELLOW)
-          .setTitle('ðŸ† Ranked detectada')
-          .setDescription(`${interaction.user} estÃ¡ chamando para ranked de **${game}**.\n\nApareÃ§am com mira, paciÃªncia e responsabilidade emocional mÃ­nima.`)
-          .setTimestamp()
-      ]
-    });
-    return;
-  }
-
-  if (interaction.commandName === 'agentes') {
-    await interaction.reply({
-      embeds: [buildAgentsListEmbed(interaction.user)],
-      ephemeral: true
-    });
-    return;
-  }
-
-  if (interaction.commandName === 'dica') {
-    const tips = [
-      'NÃ£o dÃ¡ peek seco em tudo. Ã€s vezes sobreviver tambÃ©m Ã© highlight.',
-      'Se o time estÃ¡ quieto, fala o bÃ¡sico: onde viu, quanto tirou, se recuou.',
-      'Compra junto. Morrer rico no eco dos outros Ã© crime de laboratÃ³rio.',
-      'Depois do plant, joga pelo tempo. A spike Ã© sua melhor duelista.',
-      'Se perdeu duas rounds fazendo igual, parabÃ©ns: vocÃª descobriu uma variÃ¡vel ruim.'
-    ];
-    const tip = tips[Math.floor(Math.random() * tips.length)];
-    await interaction.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(KILLJOY_YELLOW)
-          .setTitle('ðŸ’¡ Dica da Killjoy')
-          .setDescription(tip)
-          .setTimestamp()
-      ]
-    });
-    return;
-  }
-
-  if (interaction.commandName === 'xodo') {
-    if (!interaction.inGuild()) {
-      await interaction.reply({ content: 'Esse comando sÃ³ funciona dentro do servidor.', ephemeral: true });
+  
+    if (interaction.isButton() && interaction.customId === 'agent_panel_show') {
+      await safeReply(interaction, { embeds: [buildAgentsListEmbed(interaction.user)], ephemeral: true });
       return;
     }
-
-    if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageRoles)) {
-      await interaction.reply({ content: 'SÃ³ quem pode gerenciar cargos consegue escolher os XodÃ³s do Coca.', ephemeral: true });
+  
+    if (interaction.isButton() && interaction.customId === 'agent_panel_clear') {
+      delete agentPools[interaction.user.id];
+      saveAgentPools();
+      await safeReply(interaction, { content: 'Sua lista de agentes foi limpa.', ephemeral: true });
       return;
     }
-
-    const targetUser = interaction.options.getUser('membro', true);
-    const guild = interaction.guild;
-    const member = await guild.members.fetch(targetUser.id);
-    const role = await ensureXodoRole(guild);
-
-    await member.roles.add(role, `Escolhido como ${XODO_ROLE_NAME} por ${interaction.user.tag}`);
-
-    await interaction.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(KILLJOY_YELLOW)
-          .setTitle('ðŸ§¸ XodÃ³ do Coca escolhido')
-          .setDescription(`${member} agora carrega o cargo **${XODO_ROLE_NAME}**.\n\nCuidado: fofura com certificado oficial dos Patifes.`)
-          .setTimestamp()
-      ]
-    });
-    return;
-  }
-
-  if (interaction.commandName === 'setup-agentes') {
-    if (!interaction.inGuild()) {
-      await interaction.reply({ content: 'Esse comando sÃ³ funciona dentro do servidor.', ephemeral: true });
+  
+    if (interaction.isStringSelectMenu() && interaction.customId.startsWith('agent_select_')) {
+      const selected = new Set(getUserAgents(interaction.user.id));
+      const index = Number(interaction.customId.replace('agent_select_', ''));
+      const chunk = VALORANT_AGENTS.slice(index * 25, index * 25 + 25);
+  
+      for (const agent of chunk) selected.delete(agent);
+      for (const agent of interaction.values) selected.add(agent);
+  
+      agentPools[interaction.user.id] = [...selected].filter(agent => VALORANT_AGENTS.includes(agent));
+      saveAgentPools();
+  
+      await interaction.update({
+        embeds: [buildAgentSetupEmbed(interaction.user)],
+        components: [...buildAgentSelectRows(interaction.user.id), buildAgentControlRow()]
+      });
       return;
     }
-
-    if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageChannels)) {
-      await interaction.reply({ content: 'SÃ³ quem pode gerenciar canais consegue recriar o painel de agentes.', ephemeral: true });
+  
+    if (interaction.isButton() && interaction.customId === 'agent_roll_saved') {
+      const pool = getUserAgents(interaction.user.id);
+      if (!pool.length) {
+        await interaction.reply({ content: 'Escolhe pelo menos um agente antes de girar a roleta.', ephemeral: true });
+        return;
+      }
+      await runAgentRoulette(interaction, pool);
       return;
     }
-
-    const channel = await ensureAgentsChannel(interaction.guild, true);
-    await interaction.reply({
-      content: `Canal de agentes pronto: ${channel}`,
-      ephemeral: true
-    });
-    return;
-  }
-
-  if (interaction.commandName === 'sortear-agente') {
-    await interaction.reply({
-      embeds: [buildAgentSetupEmbed(interaction.user)],
-      components: [...buildAgentSelectRows(interaction.user.id), buildAgentControlRow()],
-      ephemeral: true
-    });
-    return;
+  
+    if (interaction.isButton() && interaction.customId === 'agent_show_saved') {
+      await safeReply(interaction, { embeds: [buildAgentsListEmbed(interaction.user)], ephemeral: true });
+      return;
+    }
+  
+    if (interaction.isButton() && interaction.customId === 'agent_clear_saved') {
+      delete agentPools[interaction.user.id];
+      saveAgentPools();
+      await interaction.update({
+        embeds: [buildAgentSetupEmbed(interaction.user)],
+        components: [...buildAgentSelectRows(interaction.user.id), buildAgentControlRow()]
+      });
+      return;
+    }
+  
+    if (!interaction.isChatInputCommand()) return;
+  
+    if (interaction.commandName === 'ping') {
+      const latency = Math.max(0, Date.now() - interaction.createdTimestamp);
+      await interaction.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(KILLJOY_YELLOW)
+            .setTitle('ðŸŸ¢ Killjoy online')
+            .setDescription(`Tudo certo por aqui.\nLatÃªncia: **${latency}ms**`)
+            .setFooter({ text: 'Relax, eu jÃ¡ cuidei de tudo.' })
+            .setTimestamp()
+        ],
+        ephemeral: true
+      });
+      return;
+    }
+  
+    if (interaction.commandName === 'killjoy') {
+      await interaction.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(KILLJOY_YELLOW)
+            .setTitle('KILLJOY // CENTRAL DOS PATIFES')
+            .setDescription([
+              'Eu cuido do laboratÃ³rio enquanto vocÃªs inventam moda.',
+              '',
+              '**Comandos Ãºteis**',
+              '`/sortear-agente` â€” escolhe um agente de VALORANT',
+              '`/ping` â€” confere se estou acordada',
+              '',
+              'Sem drama. SÃ³ tecnologia aprovada e caos supervisionado. âš¡'
+            ].join('\n'))
+            .setFooter({ text: 'Killjoy dos Patifes ðŸ’›' })
+            .setTimestamp()
+        ],
+        ephemeral: true
+      });
+      return;
+    }
+  
+    if (interaction.commandName === 'ajuda') {
+      await interaction.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(KILLJOY_YELLOW)
+            .setTitle('KILLJOY // COMANDOS')
+            .setDescription([
+              '`/killjoy` â€” painel rÃ¡pido da bot',
+              '`/ping` â€” teste de vida',
+              '`/registro` â€” salva seu jogo/rank bÃ¡sico',
+              '`/perfil` â€” mostra um perfil',
+              '`/lobby` â€” chama gente pra jogar',
+              '`/ranked` â€” chamada rÃ¡pida pra ranked',
+              '`/sortear-agente` â€” sorteia agente de VALORANT',
+              '`/agentes` â€” lista agentes do sorteio',
+              '`/dica` â€” dica rÃ¡pida da Killjoy',
+              '',
+              'Clipes continuam removidos, como vocÃª pediu.'
+            ].join('\n'))
+            .setFooter({ text: 'Patifes sob controle. Quase sempre.' })
+            .setTimestamp()
+        ],
+        ephemeral: true
+      });
+      return;
+    }
+  
+    if (interaction.commandName === 'registro') {
+      const game = interaction.options.getString('jogo') || 'nÃ£o informado';
+      const rank = interaction.options.getString('rank') || 'nÃ£o informado';
+      playerProfiles.set(interaction.user.id, {
+        game,
+        rank,
+        updatedAt: new Date()
+      });
+      await interaction.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(KILLJOY_YELLOW)
+            .setTitle('âœ… Registro atualizado')
+            .setDescription(`Perfil calibrado para ${interaction.user}.\n\n**Jogo:** ${game}\n**Rank:** ${rank}`)
+            .setFooter({ text: 'Dados temporÃ¡rios atÃ© a prÃ³xima reinicializaÃ§Ã£o.' })
+            .setTimestamp()
+        ],
+        ephemeral: true
+      });
+      return;
+    }
+  
+    if (interaction.commandName === 'perfil') {
+      const target = interaction.options.getUser('membro') || interaction.user;
+      const profile = playerProfiles.get(target.id);
+      await interaction.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(KILLJOY_YELLOW)
+            .setTitle(`ðŸ‘¤ Perfil de ${target.globalName || target.username}`)
+            .setThumbnail(target.displayAvatarURL({ extension: 'png', size: 128 }))
+            .setDescription(profile
+              ? `**Jogo:** ${profile.game}\n**Rank:** ${profile.rank}\n**Atualizado:** <t:${Math.floor(profile.updatedAt.getTime() / 1000)}:R>`
+              : 'Ainda nÃ£o encontrei cadastro para esse membro.\nUse `/registro` para calibrar o perfil.')
+            .setFooter({ text: 'Killjoy // Patifes' })
+            .setTimestamp()
+        ]
+      });
+      return;
+    }
+  
+    if (interaction.commandName === 'lobby') {
+      const game = interaction.options.getString('jogo') || 'VALORANT';
+      const slots = interaction.options.getInteger('vagas') || 5;
+      await interaction.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(KILLJOY_YELLOW)
+            .setTitle('ðŸŽ® Lobby aberto')
+            .setDescription(`${interaction.user} estÃ¡ montando lobby de **${game}**.\n\n**Vagas:** ${slots}\nReage aÃ­ ou chama no chat antes que a fila vire bagunÃ§a.`)
+            .setFooter({ text: 'OrganizaÃ§Ã£o por Killjoy, execuÃ§Ã£o pelos Patifes.' })
+            .setTimestamp()
+        ]
+      });
+      return;
+    }
+  
+    if (interaction.commandName === 'ranked') {
+      const game = interaction.options.getString('jogo') || 'VALORANT';
+      await interaction.reply({
+        content: '@here',
+        embeds: [
+          new EmbedBuilder()
+            .setColor(KILLJOY_YELLOW)
+            .setTitle('ðŸ† Ranked detectada')
+            .setDescription(`${interaction.user} estÃ¡ chamando para ranked de **${game}**.\n\nApareÃ§am com mira, paciÃªncia e responsabilidade emocional mÃ­nima.`)
+            .setTimestamp()
+        ]
+      });
+      return;
+    }
+  
+    if (interaction.commandName === 'agentes') {
+      await interaction.reply({
+        embeds: [buildAgentsListEmbed(interaction.user)],
+        ephemeral: true
+      });
+      return;
+    }
+  
+    if (interaction.commandName === 'dica') {
+      const tips = [
+        'NÃ£o dÃ¡ peek seco em tudo. Ã€s vezes sobreviver tambÃ©m Ã© highlight.',
+        'Se o time estÃ¡ quieto, fala o bÃ¡sico: onde viu, quanto tirou, se recuou.',
+        'Compra junto. Morrer rico no eco dos outros Ã© crime de laboratÃ³rio.',
+        'Depois do plant, joga pelo tempo. A spike Ã© sua melhor duelista.',
+        'Se perdeu duas rounds fazendo igual, parabÃ©ns: vocÃª descobriu uma variÃ¡vel ruim.'
+      ];
+      const tip = tips[Math.floor(Math.random() * tips.length)];
+      await interaction.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(KILLJOY_YELLOW)
+            .setTitle('ðŸ’¡ Dica da Killjoy')
+            .setDescription(tip)
+            .setTimestamp()
+        ]
+      });
+      return;
+    }
+  
+    if (interaction.commandName === 'xodo') {
+      if (!interaction.inGuild()) {
+        await interaction.reply({ content: 'Esse comando sÃ³ funciona dentro do servidor.', ephemeral: true });
+        return;
+      }
+  
+      if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageRoles)) {
+        await interaction.reply({ content: 'SÃ³ quem pode gerenciar cargos consegue escolher os XodÃ³s do Coca.', ephemeral: true });
+        return;
+      }
+  
+      const targetUser = interaction.options.getUser('membro', true);
+      const guild = interaction.guild;
+      const member = await guild.members.fetch(targetUser.id);
+      const role = await ensureXodoRole(guild);
+  
+      await member.roles.add(role, `Escolhido como ${XODO_ROLE_NAME} por ${interaction.user.tag}`);
+  
+      await interaction.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(KILLJOY_YELLOW)
+            .setTitle('ðŸ§¸ XodÃ³ do Coca escolhido')
+            .setDescription(`${member} agora carrega o cargo **${XODO_ROLE_NAME}**.\n\nCuidado: fofura com certificado oficial dos Patifes.`)
+            .setTimestamp()
+        ]
+      });
+      return;
+    }
+  
+    if (interaction.commandName === 'setup-agentes') {
+      if (!interaction.inGuild()) {
+        await interaction.reply({ content: 'Esse comando sÃ³ funciona dentro do servidor.', ephemeral: true });
+        return;
+      }
+  
+      if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageChannels)) {
+        await interaction.reply({ content: 'SÃ³ quem pode gerenciar canais consegue recriar o painel de agentes.', ephemeral: true });
+        return;
+      }
+  
+      const channel = await ensureAgentsChannel(interaction.guild, true);
+      await interaction.reply({
+        content: `Canal de agentes pronto: ${channel}`,
+        ephemeral: true
+      });
+      return;
+    }
+  
+    if (interaction.commandName === 'sortear-agente') {
+      await interaction.reply({
+        embeds: [buildAgentSetupEmbed(interaction.user)],
+        components: [...buildAgentSelectRows(interaction.user.id), buildAgentControlRow()],
+        ephemeral: true
+      });
+      return;
+    }
+  } catch (err) {
+    console.error('[Killjoy] Erro em interactionCreate:', err);
+    await safeReply(interaction, { content: 'A Killjoy tropeçou nessa interacao, mas ja anotei o erro.', ephemeral: true }).catch(() => {});
   }
 });
 
