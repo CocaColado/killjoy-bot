@@ -167,8 +167,8 @@ async function registerSlashCommands() {
         .toJSON()
     ];
     const rest = new REST({ version: '10' }).setToken(TOKEN);
-    await rest.put(Routes.applicationCommands(CLIENT_ID), { body: commands });
-    console.log('[Killjoy] Comandos registrados: /sortear-agente, /ping e /killjoy');
+    await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
+    console.log('[Killjoy] Comandos do servidor Patifes registrados com sucesso.');
   } catch (err) {
     console.error('[Killjoy] Erro ao registrar comandos:', err.message);
   }
