@@ -194,7 +194,13 @@ async function cleanupOldAgentSelectorPanels() {
         message.embeds[0]?.description ?? '',
         ...((message.embeds[0]?.fields ?? []).flatMap(field => [field.name, field.value]))
       ].join(' ');
-      return text.includes('SELETOR DE AGENTES') || text.includes('CENTRAL DE AGENTES');
+      return (
+        message.components.length > 0 ||
+        text.includes('SELETOR DE AGENTES') ||
+        text.includes('CENTRAL DE AGENTES') ||
+        text.includes('Arsenal de Agentes') ||
+        text.includes('Agentes no sorteio')
+      );
     });
 
     for (const message of oldPanels.values()) {
