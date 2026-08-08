@@ -1433,7 +1433,8 @@ function clearLogs(){
   showToast('Terminal limpo.', 'info');
 }
 
-async function api(path,body={},label){
+async function api(path,body={},label,options={}){
+  const silent = !!options.silent;
   try{
     const r=await fetch(path,{
       method:'POST',
@@ -1444,19 +1445,19 @@ async function api(path,body={},label){
     });
     const j=await r.json().catch(()=>({}));
     if(j.success){
-      playUISound('success');
+      if(!silent) playUISound('success');
       log(`${label||path} — Sucesso!`,'ok');
-      showToast(`${label||'Ação'} concluída com sucesso.`, 'success');
+      if(!silent) showToast(`${label||'Ação'} concluída com sucesso.`, 'success');
     }else{
-      playUISound('error');
+      if(!silent) playUISound('error');
       log(`${label||path} — ${j.error||'falhou'}`,'err');
-      showToast(`${label||'Ação'} falhou: ${j.error||'erro desconhecido'}`, 'error');
+      if(!silent) showToast(`${label||'Ação'} falhou: ${j.error||'erro desconhecido'}`, 'error');
     }
     loadData();return j;
   }catch(e){
-    playUISound('error');
+    if(!silent) playUISound('error');
     log(`${label||path} — erro de comunicação`,'warn');
-    showToast(`Erro de conexão com a API`, 'error');
+    if(!silent) showToast(`Erro de conexão com a API`, 'error');
     return{success:false,error:e.message};
   }
 }
@@ -1775,10 +1776,15 @@ function stopMP3(){
 }
 
 /* REALTIME VOLUME CONTROL */
+let volumeUpdateTimer = null;
 function adjustVolume(v){
   const vol = parseFloat(v) / 100;
-  document.getElementById('volVal').textContent = v + '%';
-  api('/api/set-volume', { volume: vol }, 'Ajustar Volume em Tempo Real');
+  const volVal = document.getElementById('volVal');
+  if (volVal) volVal.textContent = v + '%';
+  clearTimeout(volumeUpdateTimer);
+  volumeUpdateTimer = setTimeout(() => {
+    api('/api/set-volume', { volume: vol }, 'Ajustar Volume em Tempo Real', { silent: true });
+  }, 250);
 }
 
 /* REALTIME PITCH / SPEED CONTROL */
