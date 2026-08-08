@@ -208,16 +208,16 @@ async function ensureAgentsChannel(guild, shouldPostPanel = false) {
       embeds: [
         new EmbedBuilder()
           .setColor(KILLJOY_YELLOW)
-          .setTitle('🎰 ROLETA DE AGENTES')
+          .setTitle('🎯 KILLJOY // CENTRAL DE AGENTES')
           .setDescription([
             'Canal recriado e calibrado.',
             '',
-            'Use `/sortear-agente` em qualquer canal permitido, ou clique no botão abaixo para girar a roleta por aqui.'
+            'Use /sortear-agente para abrir sua escolha de agentes.',
+            'A Killjoy salva sua lista e sorteia só entre os agentes cadastrados.'
           ].join('\n'))
           .setFooter({ text: 'Killjoy dos Patifes — painel de agentes' })
           .setTimestamp()
-      ],
-      components: [buildAgentRouletteRow()]
+      ]
     });
   }
 
