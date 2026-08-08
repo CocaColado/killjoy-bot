@@ -13,6 +13,7 @@ import {
   StringSelectMenuBuilder,
   ButtonBuilder,
   ButtonStyle,
+  PermissionFlagsBits,
   REST,
   Routes,
   SlashCommandBuilder
@@ -29,6 +30,8 @@ import {
   VoiceConnectionStatus
 } from '@discordjs/voice';
 import ffmpegPath from 'ffmpeg-static';
+import { handleRegistrationInteraction, profileEmbed, registrationPanel } from './src/registration.js';
+import { readJson, writeJsonAtomic } from './src/storage.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -42,11 +45,19 @@ const KTOS_PASSWORD = process.env.KTOS_PASSWORD || 'patifes123';
 
 const KILLJOY_YELLOW = 0xffed00;
 const VALORANT_AGENTS = [
-  'Jett', 'Reyna', 'Raze', 'Phoenix', 'Yoru', 'Neon', 'Iso',
-  'Sova', 'Breach', 'Skye', 'KAY/O', 'Fade', 'Gekko', 'Tejo',
-  'Brimstone', 'Viper', 'Omen', 'Astra', 'Harbor', 'Clove',
-  'Killjoy', 'Cypher', 'Sage', 'Chamber', 'Deadlock', 'Vyse'
+  'Astra', 'Breach', 'Brimstone', 'Chamber', 'Clove', 'Cypher', 'Deadlock',
+  'Fade', 'Gekko', 'Harbor', 'Iso', 'Jett', 'KAY/O', 'Killjoy', 'Neon',
+  'Omen', 'Phoenix', 'Raze', 'Reyna', 'Sage', 'Skye', 'Sova', 'Tejo',
+  'Viper', 'Vyse', 'Yoru'
 ];
+const AGENT_EMOJIS = {
+  Astra: '🌌', Breach: '🦾', Brimstone: '🛰️', Chamber: '🎩', Clove: '🦋',
+  Cypher: '👁️', Deadlock: '🕸️', Fade: '🌑', Gekko: '🦎', Harbor: '🌊',
+  Iso: '🎯', Jett: '🌪️', 'KAY/O': '🤖', Killjoy: '🛠️', Neon: '⚡',
+  Omen: '👻', Phoenix: '🔥', Raze: '💣', Reyna: '👑', Sage: '💎',
+  Skye: '🦅', Sova: '🏹', Tejo: '🚀', Viper: '☣️', Vyse: '🌹', Yoru: '🌀'
+};
+let agentVisualsCache = null;
 
 const killjoyLines = [
   'calibrando os Patifes 🛠️',
@@ -123,7 +134,11 @@ async function registerSlashCommands() {
     const commands = [
       new SlashCommandBuilder()
         .setName('sortear-agente')
-        .setDescription('Sorteia um agente do VALORANT para a sua partida.')
+        .setDescription('Sorteia entre os agentes cadastrados da pessoa.')
+        .addUserOption(option =>
+          option.setName('membro')
+            .setDescription('Pessoa do sorteio; vazio usa você.')
+            .setRequired(false))
         .toJSON(),
       new SlashCommandBuilder()
         .setName('ping')
@@ -147,15 +162,26 @@ async function registerSlashCommands() {
         .toJSON(),
       new SlashCommandBuilder()
         .setName('registro')
-        .setDescription('Registra seu perfil básico nos Patifes.')
+        .setDescription('Abre o registro completo da Killjoy.')
+        .toJSON(),
+      new SlashCommandBuilder()
+        .setName('suporte')
+        .setDescription('Abre o painel de suporte/ticket da Killjoy.')
+        .toJSON(),
+      new SlashCommandBuilder()
+        .setName('painel')
+        .setDescription('Publica painéis úteis da Killjoy.')
         .addStringOption(option =>
-          option.setName('jogo')
-            .setDescription('Seu jogo principal.')
-            .setRequired(false))
-        .addStringOption(option =>
-          option.setName('rank')
-            .setDescription('Seu rank/elo atual.')
-            .setRequired(false))
+          option.setName('tipo')
+            .setDescription('Painel que será publicado.')
+            .setRequired(true)
+            .addChoices(
+              { name: 'Registro', value: 'registro' },
+              { name: 'Suporte', value: 'suporte' },
+              { name: 'Regras', value: 'regras' },
+              { name: 'Informações', value: 'info' }
+            ))
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
         .toJSON(),
       new SlashCommandBuilder()
         .setName('lobby')
@@ -181,7 +207,32 @@ async function registerSlashCommands() {
         .toJSON(),
       new SlashCommandBuilder()
         .setName('agentes')
-        .setDescription('Mostra a lista de agentes disponíveis no sorteio.')
+        .setDescription('Configura seus agentes disponíveis.')
+        .addSubcommand(subcommand =>
+          subcommand.setName('adicionar')
+            .setDescription('Adiciona um agente ao seu cadastro.')
+            .addStringOption(option =>
+              option.setName('agente')
+                .setDescription('Nome do agente.')
+                .setRequired(true)
+                .setAutocomplete(true)))
+        .addSubcommand(subcommand =>
+          subcommand.setName('remover')
+            .setDescription('Remove um agente do seu cadastro.')
+            .addStringOption(option =>
+              option.setName('agente')
+                .setDescription('Nome do agente.')
+                .setRequired(true)
+                .setAutocomplete(true)))
+        .addSubcommand(subcommand =>
+          subcommand.setName('lista')
+            .setDescription('Mostra seus agentes cadastrados.'))
+        .addSubcommand(subcommand =>
+          subcommand.setName('todos')
+            .setDescription('Marca que você tem todos os agentes.'))
+        .addSubcommand(subcommand =>
+          subcommand.setName('resetar')
+            .setDescription('Apaga seu cadastro de agentes.'))
         .toJSON(),
       new SlashCommandBuilder()
         .setName('dica')
@@ -189,11 +240,174 @@ async function registerSlashCommands() {
         .toJSON()
     ];
     const rest = new REST({ version: '10' }).setToken(TOKEN);
-    await rest.put(Routes.applicationCommands(CLIENT_ID), { body: commands });
-    console.log('[Killjoy] Comandos registrados: /sortear-agente, /ping, /killjoy, /ajuda, /perfil, /registro, /lobby, /ranked, /agentes e /dica');
+    await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
+    console.log('[Killjoy] Comandos registrados no Patifes: /sortear-agente, /agentes, /registro, /suporte, /painel, /ping, /killjoy, /ajuda, /perfil, /lobby, /ranked e /dica');
   } catch (err) {
     console.error('[Killjoy] Erro ao registrar comandos:', err.message);
   }
+}
+
+async function readAgentProfiles() {
+  return readJson('data/agent-profiles.json', {});
+}
+
+async function writeAgentProfiles(profiles) {
+  await writeJsonAtomic('data/agent-profiles.json', profiles);
+}
+
+async function getAgentVisual(agentName) {
+  try {
+    if (!agentVisualsCache) {
+      const response = await fetch('https://valorant-api.com/v1/agents?isPlayableCharacter=true&language=pt-BR');
+      if (!response.ok) throw new Error('Não consegui carregar a API do VALORANT.');
+      agentVisualsCache = (await response.json()).data;
+    }
+    return agentVisualsCache.find(agent =>
+      agent.displayName.toLocaleLowerCase('pt-BR') === agentName.toLocaleLowerCase('pt-BR')
+    ) || null;
+  } catch (err) {
+    console.warn('[Killjoy] Visual do agente indisponível:', err.message);
+    return null;
+  }
+}
+
+function supportPanel() {
+  return {
+    embeds: [
+      new EmbedBuilder()
+        .setColor(KILLJOY_YELLOW)
+        .setTitle('🎫 SUPORTE // KILLJOY')
+        .setDescription('Precisa de ajuda, denúncia, parceria ou resolver alguma coisa com a equipe? Abra um ticket e explique com calma.')
+        .addFields(
+          { name: '🧾 Como funciona', value: 'A Killjoy cria um canal privado para você e a equipe.' },
+          { name: '📸 Dica', value: 'Se tiver print, link ou contexto, manda tudo no ticket.' }
+        )
+        .setFooter({ text: 'Killjoy dos Patifes • suporte sem bagunça 💛' })
+        .setTimestamp()
+    ],
+    components: [
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('support:open')
+          .setLabel('Abrir ticket')
+          .setEmoji('🎫')
+          .setStyle(ButtonStyle.Primary)
+      )
+    ]
+  };
+}
+
+function rulesPanel() {
+  return {
+    embeds: [
+      new EmbedBuilder()
+        .setColor(KILLJOY_YELLOW)
+        .setTitle('📜 REGRAS DOS PATIFES')
+        .setDescription('Resenha sim, bagunça destrutiva não. O servidor fica melhor quando todo mundo consegue jogar e conversar em paz.')
+        .addFields(
+          { name: '💬 Respeito', value: 'Sem preconceito, perseguição, ameaça ou ofensa pesada.' },
+          { name: '🔊 Calls', value: 'Sem estourar microfone, floodar som ou atrapalhar partida dos outros.' },
+          { name: '🎮 Gameplay', value: 'Pode zoar, mas não estrague partida de propósito.' },
+          { name: '🚫 Spam', value: 'Nada de flood, golpe, link estranho ou divulgação sem permissão.' }
+        )
+        .setFooter({ text: 'Killjoy dos Patifes 💛' })
+    ]
+  };
+}
+
+function infoPanel() {
+  return {
+    embeds: [
+      new EmbedBuilder()
+        .setColor(KILLJOY_YELLOW)
+        .setTitle('📌 INFO // PATIFES')
+        .setDescription('Bem-vindo(a) aos Patifes. Use os canais certos, entre nas calls, chame a tropa e, se precisar de ajuda, use `/suporte`.')
+        .setFooter({ text: 'Killjoy mantendo o laboratório minimamente estável 🛠️' })
+    ]
+  };
+}
+
+async function handleSupportButton(interaction) {
+  if (!interaction.customId.startsWith('support:') && !interaction.customId.startsWith('ticket:')) return false;
+
+  if (interaction.customId === 'support:open' || interaction.customId === 'ticket:open') {
+    const existing = interaction.guild.channels.cache.find(channel => channel.topic === `ticket:${interaction.user.id}`);
+    if (existing) {
+      await interaction.reply({ content: `Você já tem um ticket aberto: ${existing}`, ephemeral: true });
+      return true;
+    }
+
+    const channel = await interaction.guild.channels.create({
+      name: `ticket-${interaction.user.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 90),
+      type: ChannelType.GuildText,
+      topic: `ticket:${interaction.user.id}`,
+      parent: interaction.channel.parentId,
+      permissionOverwrites: [
+        { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
+        { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
+        { id: client.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }
+      ]
+    });
+
+    const controls = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('ticket:close').setLabel('Fechar').setEmoji('🔒').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('ticket:delete').setLabel('Excluir').setEmoji('🗑️').setStyle(ButtonStyle.Danger)
+    );
+    await channel.send({
+      content: `🎫 ${interaction.user}, explica aqui o que aconteceu. A equipe responde por este canal.`,
+      components: [controls],
+      allowedMentions: { users: [interaction.user.id] }
+    });
+    await interaction.reply({ content: `Ticket criado: ${channel}`, ephemeral: true });
+    return true;
+  }
+
+  const ownerId = interaction.channel.topic?.startsWith('ticket:') ? interaction.channel.topic.split(':')[1] : null;
+  const isStaff = interaction.member.permissions.has(PermissionFlagsBits.ManageChannels);
+
+  if (interaction.customId === 'ticket:close') {
+    if (!ownerId) {
+      await interaction.reply({ content: 'Este canal não parece ser um ticket da Killjoy.', ephemeral: true });
+      return true;
+    }
+    if (interaction.user.id !== ownerId && !isStaff) {
+      await interaction.reply({ content: 'Só quem abriu o ticket ou a equipe pode fechar.', ephemeral: true });
+      return true;
+    }
+    await interaction.channel.permissionOverwrites.edit(ownerId, { SendMessages: false });
+    const controls = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('ticket:reopen').setLabel('Reabrir').setEmoji('🔓').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('ticket:delete').setLabel('Excluir').setEmoji('🗑️').setStyle(ButtonStyle.Danger)
+    );
+    await interaction.update({ content: `🔒 Ticket fechado por ${interaction.user}.`, components: [controls] });
+    return true;
+  }
+
+  if (interaction.customId === 'ticket:reopen') {
+    if (!isStaff) {
+      await interaction.reply({ content: 'Só a equipe pode reabrir tickets.', ephemeral: true });
+      return true;
+    }
+    if (ownerId) await interaction.channel.permissionOverwrites.edit(ownerId, { SendMessages: true });
+    const controls = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('ticket:close').setLabel('Fechar').setEmoji('🔒').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('ticket:delete').setLabel('Excluir').setEmoji('🗑️').setStyle(ButtonStyle.Danger)
+    );
+    await interaction.update({ content: `🔓 Ticket reaberto por ${interaction.user}.`, components: [controls] });
+    return true;
+  }
+
+  if (interaction.customId === 'ticket:delete') {
+    if (!isStaff) {
+      await interaction.reply({ content: 'Só a equipe pode excluir tickets.', ephemeral: true });
+      return true;
+    }
+    await interaction.reply('🗑️ Ticket será excluído em 5 segundos.');
+    setTimeout(() => interaction.channel.delete(`Ticket excluído por ${interaction.user.tag}`).catch(() => {}), 5000);
+    return true;
+  }
+
+  return false;
 }
 
 async function cleanupOldAgentSelectorPanels() {
@@ -253,6 +467,21 @@ client.on('ready', async () => {
 });
 
 client.on('interactionCreate', async interaction => {
+  if (await handleRegistrationInteraction(interaction)) return;
+
+  if (interaction.isAutocomplete()) {
+    const query = interaction.options.getFocused().toLocaleLowerCase('pt-BR');
+    const matches = VALORANT_AGENTS
+      .filter(agent => agent.toLocaleLowerCase('pt-BR').includes(query))
+      .slice(0, 25);
+    await interaction.respond(matches.map(agent => ({ name: agent, value: agent })));
+    return;
+  }
+
+  if (interaction.isButton()) {
+    if (await handleSupportButton(interaction)) return;
+  }
+
   if (!interaction.isChatInputCommand()) return;
 
   if (interaction.commandName === 'ping') {
@@ -303,12 +532,13 @@ client.on('interactionCreate', async interaction => {
           .setDescription([
             '`/killjoy` — painel rápido da bot',
             '`/ping` — teste de vida',
-            '`/registro` — salva seu jogo/rank básico',
+            '`/registro` — abre a ficha completa interativa',
             '`/perfil` — mostra um perfil',
+            '`/suporte` — abre um ticket',
             '`/lobby` — chama gente pra jogar',
             '`/ranked` — chamada rápida pra ranked',
-            '`/sortear-agente` — sorteia agente de VALORANT',
-            '`/agentes` — lista agentes do sorteio',
+            '`/agentes` — cadastra seus agentes',
+            '`/sortear-agente` — sorteia usando seu cadastro',
             '`/dica` — dica rápida da Killjoy',
             '',
             'Clipes continuam removidos, como você pediu.'
@@ -322,43 +552,44 @@ client.on('interactionCreate', async interaction => {
   }
 
   if (interaction.commandName === 'registro') {
-    const game = interaction.options.getString('jogo') || 'não informado';
-    const rank = interaction.options.getString('rank') || 'não informado';
-    playerProfiles.set(interaction.user.id, {
-      game,
-      rank,
-      updatedAt: new Date()
-    });
-    await interaction.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(KILLJOY_YELLOW)
-          .setTitle('✅ Registro atualizado')
-          .setDescription(`Perfil calibrado para ${interaction.user}.\n\n**Jogo:** ${game}\n**Rank:** ${rank}`)
-          .setFooter({ text: 'Dados temporários até a próxima reinicialização.' })
-          .setTimestamp()
-      ],
-      ephemeral: true
-    });
+    await interaction.reply({ ...registrationPanel(), ephemeral: true });
     return;
   }
 
   if (interaction.commandName === 'perfil') {
     const target = interaction.options.getUser('membro') || interaction.user;
-    const profile = playerProfiles.get(target.id);
+    const profiles = await readJson('data/registration-profiles.json', {});
+    const profile = profiles[target.id];
     await interaction.reply({
-      embeds: [
-        new EmbedBuilder()
+      embeds: profile
+        ? [await profileEmbed(target, profile)]
+        : [new EmbedBuilder()
           .setColor(KILLJOY_YELLOW)
           .setTitle(`👤 Perfil de ${target.globalName || target.username}`)
           .setThumbnail(target.displayAvatarURL({ extension: 'png', size: 128 }))
-          .setDescription(profile
-            ? `**Jogo:** ${profile.game}\n**Rank:** ${profile.rank}\n**Atualizado:** <t:${Math.floor(profile.updatedAt.getTime() / 1000)}:R>`
-            : 'Ainda não encontrei cadastro para esse membro.\nUse `/registro` para calibrar o perfil.')
+          .setDescription('Ainda não encontrei cadastro para esse membro.\nUse `/registro` para calibrar o perfil.')
           .setFooter({ text: 'Killjoy // Patifes' })
-          .setTimestamp()
-      ]
+          .setTimestamp()]
     });
+    return;
+  }
+
+  if (interaction.commandName === 'suporte') {
+    await interaction.reply(supportPanel());
+    return;
+  }
+
+  if (interaction.commandName === 'painel') {
+    const type = interaction.options.getString('tipo');
+    const payload = type === 'registro'
+      ? registrationPanel()
+      : type === 'suporte'
+        ? supportPanel()
+        : type === 'regras'
+          ? rulesPanel()
+          : infoPanel();
+    await interaction.reply({ content: 'Painel publicado. 💛', ephemeral: true });
+    await interaction.channel.send(payload);
     return;
   }
 
@@ -394,16 +625,60 @@ client.on('interactionCreate', async interaction => {
   }
 
   if (interaction.commandName === 'agentes') {
-    await interaction.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(KILLJOY_YELLOW)
-          .setTitle('🎯 Agentes no sorteio')
-          .setDescription(VALORANT_AGENTS.join(', '))
-          .setFooter({ text: 'Use /sortear-agente para deixar o destino decidir.' })
-      ],
-      ephemeral: true
-    });
+    const profiles = await readAgentProfiles();
+    const subcommand = interaction.options.getSubcommand();
+    const profile = profiles[interaction.user.id] ?? { all: false, agents: [] };
+
+    if (subcommand === 'todos') {
+      profiles[interaction.user.id] = { all: true, agents: [] };
+      await writeAgentProfiles(profiles);
+      await interaction.reply({ content: '✅ Anotado: você possui todos os agentes. A roleta está liberada!', ephemeral: true });
+      return;
+    }
+
+    if (subcommand === 'resetar') {
+      delete profiles[interaction.user.id];
+      await writeAgentProfiles(profiles);
+      await interaction.reply({ content: '🧹 Seu cadastro de agentes foi apagado.', ephemeral: true });
+      return;
+    }
+
+    if (subcommand === 'lista') {
+      if (profile.all) {
+        await interaction.reply({ content: '📋 Seu cadastro está como **todos os agentes**.', ephemeral: true });
+        return;
+      }
+      if (!profile.agents?.length) {
+        await interaction.reply({ content: '📋 Você ainda não cadastrou agentes. Use `/agentes adicionar` ou `/agentes todos`.', ephemeral: true });
+        return;
+      }
+      await interaction.reply({ content: `📋 Seus agentes (${profile.agents.length}): **${profile.agents.sort().join(', ')}**`, ephemeral: true });
+      return;
+    }
+
+    const agent = interaction.options.getString('agente');
+    if (!VALORANT_AGENTS.includes(agent)) {
+      await interaction.reply({ content: 'Esse agente não está na lista atual da Killjoy.', ephemeral: true });
+      return;
+    }
+    if (profile.all) {
+      await interaction.reply({ content: 'Seu perfil está marcado como **todos os agentes**. Use `/agentes resetar` se quiser montar uma lista específica.', ephemeral: true });
+      return;
+    }
+
+    profile.agents ??= [];
+    if (subcommand === 'adicionar') {
+      if (!profile.agents.includes(agent)) profile.agents.push(agent);
+      profiles[interaction.user.id] = profile;
+      await writeAgentProfiles(profiles);
+      await interaction.reply({ content: `✅ **${agent}** adicionado. Total no cadastro: **${profile.agents.length}**.`, ephemeral: true });
+      return;
+    }
+
+    profile.agents = profile.agents.filter(item => item !== agent);
+    profiles[interaction.user.id] = profile;
+    await writeAgentProfiles(profiles);
+    await interaction.reply({ content: `➖ **${agent}** removido. Total no cadastro: **${profile.agents.length}**.`, ephemeral: true });
     return;
   }
 
@@ -429,15 +704,46 @@ client.on('interactionCreate', async interaction => {
   }
 
   if (interaction.commandName === 'sortear-agente') {
-    const picked = VALORANT_AGENTS[Math.floor(Math.random() * VALORANT_AGENTS.length)];
+    const user = interaction.options.getUser('membro') || interaction.user;
+    const profiles = await readAgentProfiles();
+    const profile = profiles[user.id];
+
+    if (user.bot) {
+      await interaction.reply({ content: 'Robô não precisa de agente, precisa é de tomada 😅', ephemeral: true });
+      return;
+    }
+
+    if (!profile || (!profile.all && !profile.agents?.length)) {
+      await interaction.reply({
+        content: `${user} ainda não cadastrou agentes. Use \`/agentes adicionar\` ou \`/agentes todos\` primeiro.`,
+        allowedMentions: { users: [user.id] }
+      });
+      return;
+    }
+
+    const pool = profile.all ? VALORANT_AGENTS : profile.agents.filter(agent => VALORANT_AGENTS.includes(agent));
+    const picked = pool[Math.floor(Math.random() * pool.length)];
+    const visual = await getAgentVisual(picked);
+    const color = visual?.backgroundGradientColors?.[0]
+      ? Number.parseInt(visual.backgroundGradientColors[0].slice(0, 6), 16)
+      : KILLJOY_YELLOW;
     const embed = new EmbedBuilder()
-      .setColor(KILLJOY_YELLOW)
-      .setTitle('🎯 AGENTE SORTEADO // VALORANT')
-      .setDescription(`A Killjoy selecionou o agente **${picked}** para ${interaction.user}! 🛠️⚡`)
-      .setFooter({ text: 'Laboratório da Killjoy — Os Patifes 💛' })
+      .setColor(color)
+      .setTitle(`${AGENT_EMOJIS[picked] || '🎯'} ${picked.toLocaleUpperCase('pt-BR')} FOI SORTEADO`)
+      .setDescription(`## ${user}\nA Killjoy girou a roleta e escolheu **${picked}** para esta partida.`)
+      .addFields(
+        { name: '🎲 Arsenal usado', value: `${pool.length} agente(s) cadastrados`, inline: true },
+        { name: '🛠️ Diagnóstico', value: 'Aprovado. Agora vai lá e faz o caos organizado.', inline: true }
+      )
+      .setFooter({ text: 'A mensagem some em 2 minutos • Killjoy dos Patifes 💛' })
       .setTimestamp();
-    
-    await interaction.reply({ embeds: [embed] });
+
+    if (visual?.displayIcon) embed.setThumbnail(visual.displayIcon);
+    if (visual?.fullPortraitV2 || visual?.fullPortrait) embed.setImage(visual.fullPortraitV2 || visual.fullPortrait);
+
+    const response = await interaction.reply({ embeds: [embed], fetchReply: true });
+    setTimeout(() => response.delete().catch(() => {}), 2 * 60 * 1000);
+    return;
   }
 });
 
