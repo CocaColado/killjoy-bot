@@ -185,21 +185,16 @@ function buildAgentSetupEmbed(user) {
 }
 
 function buildAgentRouletteEmbed(user, picked, pool) {
-  const spin = [...pool].filter(agent => agent !== picked).sort(() => Math.random() - 0.5).slice(0, 4);
-  const animation = [...spin, picked]
-    .map((agent, index) => `${agent === picked ? '✅' : '•'} **${index + 1}. ${agent}**`)
-    .join('\n');
   return new EmbedBuilder()
     .setColor(KILLJOY_YELLOW)
     .setTitle('🎯 AGENTE SORTEADO // ' + picked.toUpperCase())
     .setDescription([
       'A roleta da Killjoy girou para ' + user + '.',
       '',
-      '**Sequência da roleta**',
-      animation,
-      '',
       '## ' + picked,
-      'Vai com fÃ©. Se der errado, foi estatÃ­stica experimental.'
+      'Vai com fé. Se der errado, foi estatística experimental.',
+      '',
+      '_Essa mensagem some em 2 minutos._'
     ].join('\n'))
     .setImage(AGENT_IMAGES[picked] || null)
     .setFooter({ text: 'Sorteado entre ' + pool.length + ' agente(s) cadastrados' })
@@ -229,17 +224,20 @@ function buildRouletteLoadingEmbed(user, pool, step, totalSteps) {
 
 async function runAgentRoulette(interaction, pool) {
   const picked = randomAgent(pool);
-  const totalSteps = 6;
+  const totalSteps = 4;
 
   await interaction.reply({ embeds: [buildRouletteLoadingEmbed(interaction.user, pool, 1, totalSteps)] });
 
   for (let step = 2; step <= totalSteps; step++) {
-    await new Promise(resolve => setTimeout(resolve, 650));
+    await new Promise(resolve => setTimeout(resolve, 300));
     await interaction.editReply({ embeds: [buildRouletteLoadingEmbed(interaction.user, pool, step, totalSteps)] });
   }
 
-  await new Promise(resolve => setTimeout(resolve, 450));
+  await new Promise(resolve => setTimeout(resolve, 250));
   await interaction.editReply({ embeds: [buildAgentRouletteEmbed(interaction.user, picked, pool)] });
+  setTimeout(() => {
+    interaction.deleteReply().catch(() => {});
+  }, 2 * 60 * 1000);
 }
 
 function buildAgentsListEmbed(user) {
