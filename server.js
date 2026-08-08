@@ -60,6 +60,13 @@ if (RENDER_EXTERNAL_URL) {
     } catch (e) {}
   }, 10 * 60 * 1000); // 10 minutos
 }
+// GLOBAL ERROR BOUNDARIES (Proteção contra crashes no Render)
+process.on('unhandledRejection', error => {
+  console.error('[GLOBAL FATAL ERROR] Unhandled Rejection:', error);
+});
+process.on('uncaughtException', error => {
+  console.error('[GLOBAL FATAL ERROR] Uncaught Exception:', error);
+});
 
 const client = new Client({
   intents: [
@@ -300,240 +307,19 @@ function buildDrawnAgentEmbed(user, drawnAgent, poolSize) {
 }
 
 // Message Listener for "sortear agente" text command in chat
+const handleMessage = require('./src/bot/events/messageRouter');
+
 client.on('messageCreate', async (message) => {
-  if (message.author.bot) return;
-
-  const content = message.content.toLowerCase().trim();
-
-  if (content === '!painel-agentes') {
-    if (!message.member?.permissions.has('Administrator')) {
-      return message.reply('❌ Apenas administradores podem gerar o painel de agentes.');
-    }
-    try {
-      const embed = new EmbedBuilder()
-        .setColor(0xFFE600)
-        .setTitle('🔫 Arsenal de Agentes')
-        .setDescription('**Quais agentes você joga?**\nSelecione seus mains abaixo. Isso ajuda o bot a sortear um agente pra você quando você não souber o que jogar!\n\nUse o comando `/sortear-agente` ou digite `sortear agente` no chat depois de escolher.')
-        .setFooter({ text: 'Killjoy Control // Arsenal' });
-
-      // Build Select Menu A-M
-      const selectAM = new StringSelectMenuBuilder()
-        .setCustomId('sel_agents_am')
-        .setPlaceholder('Adicionar agentes — A até M')
-        .setMinValues(1)
-        .setMaxValues(AGENTS_AM.length);
-      AGENTS_AM.forEach(agent => {
-        selectAM.addOptions(new StringSelectMenuOptionBuilder().setLabel(agent).setValue(agent).setEmoji(AGENT_EMOJIS[agent] || '👤'));
-      });
-
-      // Build Select Menu N-Y
-      const selectNY = new StringSelectMenuBuilder()
-        .setCustomId('sel_agents_ny')
-        .setPlaceholder('Adicionar agentes — N até Y')
-        .setMinValues(1)
-        .setMaxValues(AGENTS_NY.length);
-      AGENTS_NY.forEach(agent => {
-        selectNY.addOptions(new StringSelectMenuOptionBuilder().setLabel(agent).setValue(agent).setEmoji(AGENT_EMOJIS[agent] || '👤'));
-      });
-
-      const row1 = new ActionRowBuilder().addComponents(selectAM);
-      const row2 = new ActionRowBuilder().addComponents(selectNY);
-      const row3 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('btn_agents_all').setLabel('Tenho todos').setEmoji('✅').setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId('btn_agents_view').setLabel('Ver meu cadastro').setEmoji('📋').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('btn_agents_clear').setLabel('Resetar').setEmoji('🧹').setStyle(ButtonStyle.Danger)
-      );
-
-      const panelMessage = await message.channel.send({ embeds: [embed], components: [row1, row2, row3] });
-      try { await panelMessage.pin(); } catch (e) {}
-    } catch (e) {
-      console.error(e);
-    }
-    return;
-  }
-  if (content === '!painel-registro') {
-    if (!message.member?.permissions.has('Administrator')) {
-      return message.reply('❌ Apenas administradores podem gerar o painel de registro.');
-    }
-    try {
-      const embed = new EmbedBuilder()
-        .setColor(0xFFE600)
-        .setTitle('🧪 Central de Registro da Killjoy')
-        .setDescription('**Monte sua ficha de jogador**\n\nLeva menos de um minuto. Suas escolhas ficam salvas e ajudam a encontrar gente com o mesmo estilo, horário e objetivos.\n\n🎮 **Perfil completo**\nNick, elo e agentes principais.\n\n🔄 **Sem arrependimento**\nVocê pode editar tudo depois.\n\nClique em um dos botões abaixo para começar.')
-        .setFooter({ text: 'Killjoy Control // Identificação de Agentes 💛' });
-
-      const registerButton = new ButtonBuilder().setCustomId('btn_register').setLabel('Começar registro').setEmoji('🧪').setStyle(ButtonStyle.Success);
-      const editButton = new ButtonBuilder().setCustomId('btn_edit').setLabel('Editar ficha').setEmoji('📝').setStyle(ButtonStyle.Primary);
-      const viewButton = new ButtonBuilder().setCustomId('btn_view').setLabel('Ver meu perfil').setEmoji('👤').setStyle(ButtonStyle.Secondary);
-
-      const row = new ActionRowBuilder().addComponents(registerButton, editButton, viewButton);
-
-      const panelMessage = await message.channel.send({ embeds: [embed], components: [row] });
-      try { await panelMessage.pin(); } catch (e) {}
-    } catch (e) {
-      console.error('Erro ao criar painel de registro:', e);
-    }
-    return;
-  }
-
-  if (content === 'sortear agente' || content === '/sortear-agente' || content.includes('sortear agente') || content.startsWith('sortear')) {
-    const userId = message.author.id;
-    const userAgentsSet = userAgentsMap.get(userId);
-    let pool = userAgentsSet && userAgentsSet.size > 0 ? Array.from(userAgentsSet) : ALL_VALORANT_AGENTS;
-
-    const drawnAgent = pool[Math.floor(Math.random() * pool.length)];
-    const embed = buildDrawnAgentEmbed(message.author, drawnAgent, userAgentsSet ? userAgentsSet.size : 0);
-
-    const replyMsg = await message.reply({ embeds: [embed] });
-
-    // Auto-Delete reply message after 2 minutes (120,000 ms)
-    setTimeout(async () => {
-      try {
-        await replyMsg.delete();
-      } catch (e) {}
-    }, 120_000);
-  }
+  await handleMessage(message);
 });
 
 /* ========================================================================= */
 /* 🎯 DISCORD INTERACTION SYSTEM: SLASH COMMANDS & BUTTONS & SELECT MENUS    */
 /* ========================================================================= */
+const handleInteraction = require('./src/bot/events/interactionRouter');
+
 client.on('interactionCreate', async (interaction) => {
-  try {
-    const customId = interaction.customId || '';
-
-    // SLASH COMMAND HANDLER FOR /sortear-agente
-    if (interaction.isChatInputCommand()) {
-      if (interaction.commandName === 'sortear-agente' || interaction.commandName === 'sortear') {
-        const userId = interaction.user.id;
-        const userAgentsSet = userAgentsMap.get(userId);
-        let pool = userAgentsSet && userAgentsSet.size > 0 ? Array.from(userAgentsSet) : ALL_VALORANT_AGENTS;
-
-        const drawnAgent = pool[Math.floor(Math.random() * pool.length)];
-        const embed = buildDrawnAgentEmbed(interaction.user, drawnAgent, userAgentsSet ? userAgentsSet.size : 0);
-
-        await interaction.reply({ embeds: [embed] });
-
-        // Auto-Delete slash command response after 2 minutes (120,000 ms)
-        setTimeout(async () => {
-          try {
-            await interaction.deleteReply();
-          } catch (e) {}
-        }, 120_000);
-
-        return;
-      }
-    }
-    // GENERIC FALLBACK FOR ANY UNHANDLED INTERACTION
-    // Previne o erro chato vermelho "A interação falhou" no Discord quando alguém clica em um botão antigo
-    if (interaction.isMessageComponent()) {
-      if (interaction.customId === 'sel_agents_am' || interaction.customId === 'sel_agents_ny') {
-        const userId = interaction.user.id;
-        if (!userAgentsMap.has(userId)) userAgentsMap.set(userId, new Set());
-        const userSet = userAgentsMap.get(userId);
-        
-        interaction.values.forEach(agent => userSet.add(agent));
-        saveAgentsDB();
-        
-        return await interaction.reply({ content: `✅ Agentes adicionados ao seu arsenal: **${interaction.values.join(', ')}**`, ephemeral: true });
-      }
-
-      if (interaction.customId === 'btn_agents_all') {
-        userAgentsMap.set(interaction.user.id, new Set(ALL_VALORANT_AGENTS));
-        saveAgentsDB();
-        return await interaction.reply({ content: '✅ Você adicionou **TODOS** os agentes ao seu arsenal!', ephemeral: true });
-      }
-
-      if (interaction.customId === 'btn_agents_clear') {
-        userAgentsMap.delete(interaction.user.id);
-        saveAgentsDB();
-        return await interaction.reply({ content: '🧹 Seu arsenal de agentes foi resetado.', ephemeral: true });
-      }
-
-      if (interaction.customId === 'btn_agents_view') {
-        const userSet = userAgentsMap.get(interaction.user.id);
-        if (!userSet || userSet.size === 0) {
-          return await interaction.reply({ content: 'Você não tem nenhum agente cadastrado ainda.', ephemeral: true });
-        }
-        const agentsStr = Array.from(userSet).join(', ');
-        return await interaction.reply({ content: `📋 Seu arsenal atual (${userSet.size} agentes):\n**${agentsStr}**`, ephemeral: true });
-      }
-
-      if (interaction.customId === 'btn_register' || interaction.customId === 'btn_edit') {
-        const existingProfile = playerProfiles.get(interaction.user.id);
-        const modal = new ModalBuilder()
-          .setCustomId('modal_player_register')
-          .setTitle(interaction.customId === 'btn_edit' ? 'Editar ficha' : 'Registro de Jogador');
-        
-        const nickInput = new TextInputBuilder().setCustomId('valorant_nick').setLabel('Nick no Valorant').setStyle(TextInputStyle.Short).setPlaceholder('Ex: Coca#BR1').setRequired(true).setMaxLength(50);
-        const eloInput = new TextInputBuilder().setCustomId('valorant_elo').setLabel('Elo atual').setStyle(TextInputStyle.Short).setPlaceholder('Ex: Diamante 2').setRequired(true).setMaxLength(30);
-        const agentsInput = new TextInputBuilder().setCustomId('valorant_agents').setLabel('Agentes principais').setStyle(TextInputStyle.Paragraph).setPlaceholder('Ex: Killjoy, Sage e Cypher').setRequired(true).setMaxLength(300);
-
-        if (existingProfile) {
-          if (existingProfile.nick) nickInput.setValue(existingProfile.nick);
-          if (existingProfile.elo) eloInput.setValue(existingProfile.elo);
-          if (existingProfile.agents) agentsInput.setValue(existingProfile.agents);
-        }
-
-        modal.addComponents(new ActionRowBuilder().addComponents(nickInput), new ActionRowBuilder().addComponents(eloInput), new ActionRowBuilder().addComponents(agentsInput));
-        return await interaction.showModal(modal);
-      }
-
-      if (interaction.customId === 'btn_view') {
-        const profile = playerProfiles.get(interaction.user.id);
-        if (!profile) {
-          return await interaction.reply({ embeds: [new EmbedBuilder().setColor(0xFFE600).setTitle('⚠️ Ficha não encontrada').setDescription('Você ainda não possui uma ficha de jogador cadastrada.\n\nClique em **Começar registro** para criar seu perfil.').setFooter({ text: 'Killjoy Control // Central de Registro' })], ephemeral: true });
-        }
-        const profileEmbed = new EmbedBuilder()
-          .setColor(0xFFE600)
-          .setAuthor({ name: `Ficha de ${interaction.user.username}`, iconURL: interaction.user.displayAvatarURL() })
-          .setTitle('🎭 Perfil de Jogador')
-          .addFields(
-            { name: '🎮 Nick no Valorant', value: profile.nick || 'Não informado', inline: true },
-            { name: '🏆 Elo atual', value: profile.elo || 'Não informado', inline: true },
-            { name: '🦾 Agentes principais', value: profile.agents || 'Não informado', inline: false }
-          )
-          .setThumbnail(interaction.user.displayAvatarURL({ size: 256 }))
-          .setFooter({ text: 'Killjoy Control // Identificação de Agentes' })
-          .setTimestamp();
-        return await interaction.reply({ embeds: [profileEmbed], ephemeral: true });
-      }
-
-      await interaction.reply({ content: '⚠️ Este botão ou menu expirou ou não está mais ativo.', ephemeral: true }).catch(() => {});
-      return;
-    }
-    
-    if (interaction.isModalSubmit()) {
-      if (interaction.customId === 'modal_player_register') {
-        const nick = interaction.fields.getTextInputValue('valorant_nick').trim();
-        const elo = interaction.fields.getTextInputValue('valorant_elo').trim();
-        const agents = interaction.fields.getTextInputValue('valorant_agents').trim();
-        const alreadyRegistered = playerProfiles.has(interaction.user.id);
-
-        playerProfiles.set(interaction.user.id, { userId: interaction.user.id, username: interaction.user.username, nick, elo, agents, updatedAt: new Date().toISOString() });
-        saveProfilesDB(playerProfiles);
-
-        const successEmbed = new EmbedBuilder()
-          .setColor(0x57F287)
-          .setTitle(alreadyRegistered ? '🔄 Ficha atualizada!' : '✅ Registro concluído!')
-          .setDescription(alreadyRegistered ? 'Suas informações foram atualizadas com sucesso.' : 'Sua ficha de jogador foi criada com sucesso.')
-          .addFields({ name: '🎮 Nick', value: nick, inline: true }, { name: '🏆 Elo', value: elo, inline: true }, { name: '🦾 Agentes principais', value: agents, inline: false })
-          .setThumbnail(interaction.user.displayAvatarURL({ size: 256 }))
-          .setFooter({ text: 'Killjoy Control // Registro salvo' })
-          .setTimestamp();
-        return await interaction.reply({ embeds: [successEmbed], ephemeral: true });
-      }
-
-      await interaction.deferUpdate().catch(() => {});
-      return;
-    }
-
-  } catch (err) {
-    console.error('[Interaction Error]:', err.message);
-    if (!interaction.replied && !interaction.deferred) {
-      interaction.reply({ content: 'Ocorreu um erro ao processar essa interação.', ephemeral: true }).catch(() => {});
-    }
-  }
+  await handleInteraction(interaction);
 });
 
 client.on('voiceStateUpdate', async (oldState, newState) => {
@@ -543,23 +329,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
   }
 });
 
-client.on('messageCreate', async (message) => {
-  if (message.author.bot) return;
-  if (!message.guild || message.channel.type === ChannelType.DM) {
-    const userId = message.author.id;
-    if (!dmStore.has(userId)) dmStore.set(userId, []);
-    
-    dmStore.get(userId).push({
-      id: message.id || Date.now().toString(),
-      sender: 'user',
-      content: message.content,
-      timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-      authorName: message.author.username,
-      authorAvatar: message.author.displayAvatarURL()
-    });
-    console.log(`[Killjoy DM Messenger] Nova mensagem de ${message.author.tag}: ${message.content}`);
-  }
-});
+// Handled via messageRouter
 
 console.log('[Discord] Token presente:', Boolean(TOKEN));
 console.log('[Discord] Token length:', TOKEN?.length ?? 0);
@@ -748,6 +518,17 @@ const server = http.createServer(async (req, res) => {
     });
     return;
   }
+  // GLOBAL API AUTHENTICATION
+  if (req.url.startsWith('/api/')) {
+    const authHeader = req.headers['authorization'];
+    const expectedToken = process.env.KTOS_TOKEN || 'patifes123';
+    
+    // Permitir /api/data sem token apenas para check local, ou bloquear tudo:
+    if (authHeader !== `Bearer ${expectedToken}`) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Não autorizado. Senha incorreta ou token ausente.', success: false }));
+    }
+  }
 
   if (req.method === 'GET' && req.url === '/api/data') {
     if (!botReady) {
@@ -835,10 +616,29 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'POST') {
     const chunks = [];
-    req.on('data', chunk => chunks.push(chunk));
+    let payloadSize = 0;
+    const MAX_PAYLOAD_SIZE = 50 * 1024 * 1024; // 50MB (Para comportar os áudios base64 do FFmpeg)
+
+    req.on('data', chunk => {
+      payloadSize += chunk.length;
+      if (payloadSize > MAX_PAYLOAD_SIZE) {
+        req.destroy(); // Destrói a requisição silenciosamente para evitar crash OOM no Render
+      } else {
+        chunks.push(chunk);
+      }
+    });
+
     req.on('end', async () => {
-      const bodyString = Buffer.concat(chunks).toString('utf8');
-      const data = JSON.parse(bodyString || '{}');
+      let data = {};
+      try {
+        const bodyString = Buffer.concat(chunks).toString('utf8');
+        if (bodyString) {
+          data = JSON.parse(bodyString);
+        }
+      } catch (err) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ error: 'Payload JSON inválido' }));
+      }
 
       // REAL MUSIC SEARCH WITH HD ARTWORK THUMBNAILS VIA ITUNES API
       if (req.url === '/api/search-music') {

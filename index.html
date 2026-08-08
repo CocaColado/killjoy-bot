@@ -1435,7 +1435,15 @@ function clearLogs(){
 
 async function api(path,body={},label){
   try{
-    const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const token = localStorage.getItem('ktos_token') || '';
+    const r=await fetch(path,{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body:JSON.stringify(body)
+    });
     const j=await r.json().catch(()=>({}));
     if(j.success){
       playUISound('success');
@@ -1457,7 +1465,16 @@ async function api(path,body={},label){
 
 async function loadData(manual){
   try{
-    const r=await fetch('/api/data');const d=await r.json();
+    let token = localStorage.getItem('ktos_token');
+    if(!token) {
+      token = prompt('🔐 Acesso Restrito KTOS\nDigite a senha para acessar o painel (Padrão: patifes123):');
+      if (token) localStorage.setItem('ktos_token', token);
+    }
+
+    const r=await fetch('/api/data', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const d=await r.json();
     if(d.error){
       document.getElementById('sState').textContent=d.error;
       document.getElementById('sDot').className='dot off';
