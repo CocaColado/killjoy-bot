@@ -473,6 +473,7 @@ client.on('ready', async () => {
 });
 
 client.on('interactionCreate', async interaction => {
+  try {
   if (await handleRegistrationInteraction(interaction)) return;
 
   if (interaction.isAutocomplete()) {
@@ -633,6 +634,16 @@ client.on('interactionCreate', async interaction => {
     const response = await interaction.reply({ embeds: [embed], fetchReply: true });
     setTimeout(() => response.delete().catch(() => {}), 2 * 60 * 1000);
     return;
+  }
+  } catch (error) {
+    if (error?.code === 10062 || error?.code === 40060) {
+      console.warn('[Killjoy] Interação expirada/duplicada ignorada:', error.message);
+      return;
+    }
+    console.error('[Killjoy] Erro em interação:', error);
+    const response = { content: '⚠️ Algo travou no laboratório. Tenta de novo em alguns segundos.', ephemeral: true };
+    if (interaction.deferred || interaction.replied) await interaction.followUp(response).catch(() => {});
+    else await interaction.reply(response).catch(() => {});
   }
 });
 

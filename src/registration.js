@@ -130,11 +130,14 @@ export async function handleRegistrationInteraction(interaction) {
   if (action === 'finish') {
     const missing = ['platform', 'games', 'style', 'schedule'].filter(field => !profile[field]?.length);
     if (missing.length) { await interaction.reply({ content: '⚠️ Volte à primeira etapa e complete plataforma, jogos, estilo e horários.', ephemeral: true }); return true; }
+    await interaction.update({ content: '```ansi\n\u001b[1;33m[▰▰▱▱] FINALIZANDO REGISTRO...\u001b[0m\n```\n🛠️ Sincronizando cargos e publicando sua ficha.', embeds: [], components: [] });
     profile.completedAt ??= new Date().toISOString(); profile.updatedAt = new Date().toISOString(); profiles[interaction.user.id] = profile; await saveProfiles(profiles);
     const member = await interaction.guild.members.fetch(interaction.user.id); await applyCompatibleRoles(member, profile);
     const embed = await profileEmbed(interaction.user, profile);
     await publishProfile(interaction, profile, embed); profiles[interaction.user.id] = profile; await saveProfiles(profiles);
-    await interaction.update({ content: '```ansi\n\u001b[1;32m[▰▰▰▰] REGISTRO CONCLUÍDO!\u001b[0m\n```\n✅ Cargos sincronizados e ficha publicada no canal.', embeds: [embed], components: [] }); return true;
+    await interaction.editReply({ content: '✅ Registro concluído! Sua ficha foi publicada no canal.', embeds: [], components: [] }).catch(() => {});
+    setTimeout(() => interaction.deleteReply().catch(() => {}), 7000);
+    return true;
   }
   return false;
 }
