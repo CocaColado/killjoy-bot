@@ -139,6 +139,27 @@ function buildAgentSelectRows(userId) {
   ));
 }
 
+function buildFixedAgentPanelRows() {
+  const chunks = [];
+  for (let i = 0; i < VALORANT_AGENTS.length; i += 25) chunks.push(VALORANT_AGENTS.slice(i, i + 25));
+  return chunks.map((chunk, index) => new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId('agent_panel_select_' + index)
+      .setPlaceholder(index === 0 ? 'Escolha seus agentes — parte 1' : 'Escolha seus agentes — parte 2')
+      .setMinValues(0)
+      .setMaxValues(chunk.length)
+      .addOptions(chunk.map(agent => ({ label: agent, value: agent })))
+  ));
+}
+
+function buildFixedAgentPanelControls() {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('agent_panel_roll').setLabel('Sortear').setStyle(ButtonStyle.Primary).setEmoji('🎰'),
+    new ButtonBuilder().setCustomId('agent_panel_show').setLabel('Meu cadastro').setStyle(ButtonStyle.Secondary).setEmoji('📋'),
+    new ButtonBuilder().setCustomId('agent_panel_clear').setLabel('Limpar minha lista').setStyle(ButtonStyle.Danger).setEmoji('🧹')
+  );
+}
+
 function buildAgentControlRow() {
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId('agent_roll_saved').setLabel('Sortear meus agentes').setStyle(ButtonStyle.Primary).setEmoji('🎰'),
@@ -208,18 +229,16 @@ async function ensureXodoRole(guild) {
 function buildAgentsPanelEmbed() {
   return new EmbedBuilder()
     .setColor(KILLJOY_YELLOW)
-    .setTitle('🎯 KILLJOY // CENTRAL DE AGENTES')
+    .setTitle('🎯 KILLJOY // SELETOR DE AGENTES')
     .setDescription([
-      'Escolha seus agentes, salve sua lista e deixe a Killjoy sortear só entre eles.',
+      'Escolha seus agentes nos menus abaixo e depois clique em **Sortear**.',
       '',
-      '**Como funciona**',
-      '1. Use /sortear-agente para abrir sua seleção privada.',
-      '2. Marque os agentes que você tem ou quer jogar.',
-      '3. Clique em Sortear meus agentes.',
+      'A seleção é individual: cada pessoa mexe na própria lista usando este mesmo painel.',
       '',
-      '**Extras**',
-      '/agentes mostra sua lista salva.',
-      '/setup-agentes só recria este painel se alguém apagar tudo.'
+      '**Botões**',
+      '🎰 Sortear — sorteia entre seus agentes salvos',
+      '📋 Meu cadastro — mostra sua lista atual',
+      '🧹 Limpar minha lista — apaga seu cadastro de agentes'
     ].join('\n'))
     .setFooter({ text: 'Painel fixo dos Patifes — mantido automaticamente pela Killjoy' })
     .setTimestamp();
@@ -247,7 +266,7 @@ async function ensureAgentsChannel(guild, shouldPostPanel = true) {
       panelMessage = await channel.messages.fetch(state.agentsPanelMessageId).catch(() => null);
     }
 
-    const payload = { embeds: [buildAgentsPanelEmbed()], components: [] };
+    const payload = { embeds: [buildAgentsPanelEmbed()], components: [...buildFixedAgentPanelRows(), buildFixedAgentPanelControls()] };
 
     if (panelMessage) {
       await panelMessage.edit(payload);
@@ -420,6 +439,47 @@ client.on('ready', async () => {
 });
 
 client.on('interactionCreate', async interaction => {
+  if (interaction.isStringSelectMenu() && interaction.customId.startsWith('agent_panel_select_')) {
+    const selected = new Set(getUserAgents(interaction.user.id));
+    const index = Number(interaction.customId.replace('agent_panel_select_', ''));
+    const chunk = VALORANT_AGENTS.slice(index * 25, index * 25 + 25);
+
+    for (const agent of chunk) selected.delete(agent);
+    for (const agent of interaction.values) selected.add(agent);
+
+    agentPools[interaction.user.id] = [...selected].filter(agent => VALORANT_AGENTS.includes(agent));
+    saveAgentPools();
+
+    await interaction.reply({
+      content: `Salvei sua lista com **${agentPools[interaction.user.id].length}** agente(s). Agora pode clicar em **Sortear**.`,
+      ephemeral: true
+    });
+    return;
+  }
+
+  if (interaction.isButton() && interaction.customId === 'agent_panel_roll') {
+    const pool = getUserAgents(interaction.user.id);
+    if (!pool.length) {
+      await interaction.reply({ content: 'Você ainda não escolheu agentes no painel. Marca alguns nos menus primeiro.', ephemeral: true });
+      return;
+    }
+    const picked = randomAgent(pool);
+    await interaction.reply({ embeds: [buildAgentRouletteEmbed(interaction.user, picked, pool)] });
+    return;
+  }
+
+  if (interaction.isButton() && interaction.customId === 'agent_panel_show') {
+    await interaction.reply({ embeds: [buildAgentsListEmbed(interaction.user)], ephemeral: true });
+    return;
+  }
+
+  if (interaction.isButton() && interaction.customId === 'agent_panel_clear') {
+    delete agentPools[interaction.user.id];
+    saveAgentPools();
+    await interaction.reply({ content: 'Sua lista de agentes foi limpa.', ephemeral: true });
+    return;
+  }
+
   if (interaction.isStringSelectMenu() && interaction.customId.startsWith('agent_select_')) {
     const selected = new Set(getUserAgents(interaction.user.id));
     const index = Number(interaction.customId.replace('agent_select_', ''));
