@@ -1466,7 +1466,7 @@ async function loadData(manual){
     const r=await fetch('/api/data');
     const d=await r.json();
     if(d.error){
-      document.getElementById('sState').textContent=d.error;
+      document.getElementById('sState').textContent='CONECTANDO';
       document.getElementById('sDot').className='dot off';
       return;
     }
@@ -1851,13 +1851,14 @@ function render(){
   const infoBotEl = document.getElementById('infoBotTag');
   if (infoBotEl) infoBotEl.textContent = botTag;
   
+  const botOnline = DATA.botReady !== false && DATA.botStatus !== 'offline' && !!DATA.botTag;
   const sDotEl = document.getElementById('sDot');
-  if (sDotEl) sDotEl.className = 'dot' + (DATA.botTag ? '' : ' off');
+  if (sDotEl) sDotEl.className = 'dot' + (botOnline ? '' : ' off');
 
   const sStateEl = document.getElementById('sState');
   if (sStateEl) {
-    sStateEl.textContent = defconLevel > 0 ? `🚨 DEFCON ${defconLevel}` : 'ONLINE 🟢';
-    sStateEl.style.color = defconLevel > 0 ? 'var(--accent)' : 'var(--green)';
+    sStateEl.textContent = !botOnline ? 'OFFLINE' : (defconLevel > 0 ? `🚨 DEFCON ${defconLevel}` : 'ONLINE 🟢');
+    sStateEl.style.color = !botOnline ? 'var(--red)' : (defconLevel > 0 ? 'var(--accent)' : 'var(--green)');
   }
 
   document.getElementById('stMembers').textContent = totalMems;

@@ -862,6 +862,9 @@ const server = http.createServer(async (req, res) => {
 
       return sendJson(res, 200, {
         botTag: client.user.tag,
+        botReady: client.isReady(),
+        botStatus: client.isReady() ? 'online' : 'offline',
+        botAvatar: client.user.displayAvatarURL({ extension: 'png', size: 128 }),
         defconLevel,
         currentVolume,
         totalMembers: guild.memberCount,
