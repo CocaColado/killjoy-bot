@@ -8,6 +8,7 @@ const ALL_VALORANT_AGENTS = ['Astra', 'Breach', 'Brimstone', 'Chamber', 'Clove',
 export default async function handleInteraction(interaction) {
   try {
     const customId = interaction.customId || '';
+    console.log(`[InteractionRouter] Recebido: ${customId} (${interaction.type})`);
 
     // SLASH COMMAND HANDLER
     if (interaction.isChatInputCommand()) {
