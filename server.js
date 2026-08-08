@@ -34,6 +34,7 @@ import ffmpegPath from 'ffmpeg-static';
 import prism from 'prism-media';
 import handleInteraction from './src/bot/events/interactionRouter.js';
 import handleMessage from './src/bot/events/messageRouter.js';
+import { initDB } from './src/utils/db.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1355,6 +1356,9 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, () => {
   console.log(`[Killjoy Control Center 35.0 CLEAN DM & MUSIC ARTWORK] Server rodando em http://localhost:${PORT}`);
   if (TOKEN) {
+    // Initialize database before login
+    initDB();
+
     client.login(TOKEN).catch(err => {
       console.error('[Killjoy Discord Login] Erro ao conectar bot:', err.message);
     });
