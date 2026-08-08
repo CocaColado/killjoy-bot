@@ -1,4 +1,4 @@
-import http from 'node:http';
+﻿import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
@@ -42,8 +42,8 @@ const KTOS_PANEL_SECRET = process.env.KTOS_PANEL_SECRET || '';
 const TEMP_AUDIO_PATH = path.join(__dirname, 'temp_audio.mp3');
 
 const KILLJOY_YELLOW = 0xffed00;
-const XODO_ROLE_NAME = '🧸Xodó do Coca';
-const AGENTS_CHANNEL_NAME = '🎯・agentes';
+const XODO_ROLE_NAME = 'ðŸ§¸XodÃ³ do Coca';
+const AGENTS_CHANNEL_NAME = 'ðŸŽ¯ãƒ»agentes';
 const VALORANT_AGENTS = [
   'Jett', 'Reyna', 'Raze', 'Phoenix', 'Yoru', 'Neon', 'Iso',
   'Sova', 'Breach', 'Skye', 'KAY/O', 'Fade', 'Gekko', 'Tejo',
@@ -52,32 +52,32 @@ const VALORANT_AGENTS = [
 ];
 
 const AGENT_IMAGES = {
-  Astra: 'https://media.valorant-api.com/agents/41fb69c1-4189-7b37-f117-bcaf1e96f1bf/displayicon.png',
-  Breach: 'https://media.valorant-api.com/agents/5f8d3a7f-467b-97f3-062c-13acf203c006/displayicon.png',
-  Brimstone: 'https://media.valorant-api.com/agents/9f0d8ba9-4140-b941-57d3-a7ad57c6b417/displayicon.png',
-  Chamber: 'https://media.valorant-api.com/agents/22697a3d-45bf-8dd7-4fec-84a9e28c69d7/displayicon.png',
-  Clove: 'https://media.valorant-api.com/agents/1dbf2edd-4729-0984-3115-daa5eed44993/displayicon.png',
-  Cypher: 'https://media.valorant-api.com/agents/117ed9e3-49f3-6512-3ccf-0cada7e3823b/displayicon.png',
-  Deadlock: 'https://media.valorant-api.com/agents/cc8b64c8-4b25-4ff9-6e7f-37b4da43d235/displayicon.png',
-  Fade: 'https://media.valorant-api.com/agents/dade69b4-4f5a-8528-247b-219e5a1facd6/displayicon.png',
-  Gekko: 'https://media.valorant-api.com/agents/e370fa57-4757-3604-3648-499e1f642d3f/displayicon.png',
-  Harbor: 'https://media.valorant-api.com/agents/95b78ed7-4637-86d9-7e41-71ba8c293152/displayicon.png',
-  Iso: 'https://media.valorant-api.com/agents/0e38b510-41a8-5780-5e8f-568b2a4f2d6c/displayicon.png',
-  Jett: 'https://media.valorant-api.com/agents/add6443a-41bd-e414-f6ad-e58d267f4e95/displayicon.png',
-  'KAY/O': 'https://media.valorant-api.com/agents/601dbbe7-43ce-be57-2a40-4abd24953621/displayicon.png',
-  Killjoy: 'https://media.valorant-api.com/agents/1e58de9c-4950-5125-93e9-a0aee9f98746/displayicon.png',
-  Neon: 'https://media.valorant-api.com/agents/bb2a4828-46eb-8cd1-e765-15848195d751/displayicon.png',
-  Omen: 'https://media.valorant-api.com/agents/8e253930-4c05-31dd-1b6c-968525494517/displayicon.png',
-  Phoenix: 'https://media.valorant-api.com/agents/eb93336a-449b-9c1b-0a54-a891f7921d69/displayicon.png',
-  Raze: 'https://media.valorant-api.com/agents/f94c3b30-42be-e959-889c-5aa313dba261/displayicon.png',
-  Reyna: 'https://media.valorant-api.com/agents/a3bfb853-43b2-7238-a4f1-ad90e9e46bcc/displayicon.png',
-  Sage: 'https://media.valorant-api.com/agents/569fdd95-4d10-43ab-ca70-79becc718b46/displayicon.png',
-  Skye: 'https://media.valorant-api.com/agents/6f2a04ca-43e0-be17-7f36-b3908627744d/displayicon.png',
-  Sova: 'https://media.valorant-api.com/agents/320b2a48-4d9b-a075-30f1-1f93a9b638fa/displayicon.png',
-  Tejo: 'https://media.valorant-api.com/agents/b444168c-4e35-8076-db47-ef9bf368f384/displayicon.png',
-  Viper: 'https://media.valorant-api.com/agents/707eab51-4836-f488-046a-cda6bf494859/displayicon.png',
-  Vyse: 'https://media.valorant-api.com/agents/efba5359-4016-a1e5-7626-b1ae76895940/displayicon.png',
-  Yoru: 'https://media.valorant-api.com/agents/7f94d92c-4234-0a36-9646-3a87eb8b5c89/displayicon.png'
+  Astra: 'https://media.valorant-api.com/agents/41fb69c1-4189-7b37-f117-bcaf1e96f1bf/fullportrait.png',
+  Breach: 'https://media.valorant-api.com/agents/5f8d3a7f-467b-97f3-062c-13acf203c006/fullportrait.png',
+  Brimstone: 'https://media.valorant-api.com/agents/9f0d8ba9-4140-b941-57d3-a7ad57c6b417/fullportrait.png',
+  Chamber: 'https://media.valorant-api.com/agents/22697a3d-45bf-8dd7-4fec-84a9e28c69d7/fullportrait.png',
+  Clove: 'https://media.valorant-api.com/agents/1dbf2edd-4729-0984-3115-daa5eed44993/fullportrait.png',
+  Cypher: 'https://media.valorant-api.com/agents/117ed9e3-49f3-6512-3ccf-0cada7e3823b/fullportrait.png',
+  Deadlock: 'https://media.valorant-api.com/agents/cc8b64c8-4b25-4ff9-6e7f-37b4da43d235/fullportrait.png',
+  Fade: 'https://media.valorant-api.com/agents/dade69b4-4f5a-8528-247b-219e5a1facd6/fullportrait.png',
+  Gekko: 'https://media.valorant-api.com/agents/e370fa57-4757-3604-3648-499e1f642d3f/fullportrait.png',
+  Harbor: 'https://media.valorant-api.com/agents/95b78ed7-4637-86d9-7e41-71ba8c293152/fullportrait.png',
+  Iso: 'https://media.valorant-api.com/agents/0e38b510-41a8-5780-5e8f-568b2a4f2d6c/fullportrait.png',
+  Jett: 'https://media.valorant-api.com/agents/add6443a-41bd-e414-f6ad-e58d267f4e95/fullportrait.png',
+  'KAY/O': 'https://media.valorant-api.com/agents/601dbbe7-43ce-be57-2a40-4abd24953621/fullportrait.png',
+  Killjoy: 'https://media.valorant-api.com/agents/1e58de9c-4950-5125-93e9-a0aee9f98746/fullportrait.png',
+  Neon: 'https://media.valorant-api.com/agents/bb2a4828-46eb-8cd1-e765-15848195d751/fullportrait.png',
+  Omen: 'https://media.valorant-api.com/agents/8e253930-4c05-31dd-1b6c-968525494517/fullportrait.png',
+  Phoenix: 'https://media.valorant-api.com/agents/eb93336a-449b-9c1b-0a54-a891f7921d69/fullportrait.png',
+  Raze: 'https://media.valorant-api.com/agents/f94c3b30-42be-e959-889c-5aa313dba261/fullportrait.png',
+  Reyna: 'https://media.valorant-api.com/agents/a3bfb853-43b2-7238-a4f1-ad90e9e46bcc/fullportrait.png',
+  Sage: 'https://media.valorant-api.com/agents/569fdd95-4d10-43ab-ca70-79becc718b46/fullportrait.png',
+  Skye: 'https://media.valorant-api.com/agents/6f2a04ca-43e0-be17-7f36-b3908627744d/fullportrait.png',
+  Sova: 'https://media.valorant-api.com/agents/320b2a48-4d9b-a075-30f1-1f93a9b638fa/fullportrait.png',
+  Tejo: 'https://media.valorant-api.com/agents/b444168c-4e35-8076-db47-ef9bf368f384/fullportrait.png',
+  Viper: 'https://media.valorant-api.com/agents/707eab51-4836-f488-046a-cda6bf494859/fullportrait.png',
+  Vyse: 'https://media.valorant-api.com/agents/efba5359-4016-a1e5-7626-b1ae76895940/fullportrait.png',
+  Yoru: 'https://media.valorant-api.com/agents/7f94d92c-4234-0a36-9646-3a87eb8b5c89/fullportrait.png'
 };
 
 const DATA_DIR = path.join(__dirname, 'data');
@@ -90,7 +90,7 @@ function loadAgentPools() {
     if (!fs.existsSync(AGENT_POOLS_FILE)) return {};
     return JSON.parse(fs.readFileSync(AGENT_POOLS_FILE, 'utf8'));
   } catch (err) {
-    console.error('[Killjoy] Não consegui ler agent-pools.json:', err.message);
+    console.error('[Killjoy] NÃ£o consegui ler agent-pools.json:', err.message);
     return {};
   }
 }
@@ -105,7 +105,7 @@ function loadPanelState() {
     if (!fs.existsSync(PANEL_STATE_FILE)) return {};
     return JSON.parse(fs.readFileSync(PANEL_STATE_FILE, 'utf8'));
   } catch (err) {
-    console.error('[Killjoy] Não consegui ler panel-state.json:', err.message);
+    console.error('[Killjoy] NÃ£o consegui ler panel-state.json:', err.message);
     return {};
   }
 }
@@ -132,7 +132,7 @@ function buildAgentSelectRows(userId) {
   return chunks.map((chunk, index) => new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId('agent_select_' + index)
-      .setPlaceholder(index === 0 ? 'Escolha seus agentes — parte 1' : 'Escolha seus agentes — parte 2')
+      .setPlaceholder(index === 0 ? 'Escolha seus agentes â€” parte 1' : 'Escolha seus agentes â€” parte 2')
       .setMinValues(0)
       .setMaxValues(chunk.length)
       .addOptions(chunk.map(agent => ({ label: agent, value: agent, default: selected.has(agent) })))
@@ -145,7 +145,7 @@ function buildFixedAgentPanelRows() {
   return chunks.map((chunk, index) => new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId('agent_panel_select_' + index)
-      .setPlaceholder(index === 0 ? 'Escolha seus agentes — parte 1' : 'Escolha seus agentes — parte 2')
+      .setPlaceholder(index === 0 ? 'Escolha seus agentes â€” parte 1' : 'Escolha seus agentes â€” parte 2')
       .setMinValues(0)
       .setMaxValues(chunk.length)
       .addOptions(chunk.map(agent => ({ label: agent, value: agent })))
@@ -154,17 +154,17 @@ function buildFixedAgentPanelRows() {
 
 function buildFixedAgentPanelControls() {
   return new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('agent_panel_roll').setLabel('Sortear').setStyle(ButtonStyle.Primary).setEmoji('🎰'),
-    new ButtonBuilder().setCustomId('agent_panel_show').setLabel('Meu cadastro').setStyle(ButtonStyle.Secondary).setEmoji('📋'),
-    new ButtonBuilder().setCustomId('agent_panel_clear').setLabel('Limpar minha lista').setStyle(ButtonStyle.Danger).setEmoji('🧹')
+    new ButtonBuilder().setCustomId('agent_panel_roll').setLabel('Sortear').setStyle(ButtonStyle.Primary).setEmoji('ðŸŽ°'),
+    new ButtonBuilder().setCustomId('agent_panel_show').setLabel('Meu cadastro').setStyle(ButtonStyle.Secondary).setEmoji('ðŸ“‹'),
+    new ButtonBuilder().setCustomId('agent_panel_clear').setLabel('Limpar minha lista').setStyle(ButtonStyle.Danger).setEmoji('ðŸ§¹')
   );
 }
 
 function buildAgentControlRow() {
   return new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('agent_roll_saved').setLabel('Sortear meus agentes').setStyle(ButtonStyle.Primary).setEmoji('🎰'),
-    new ButtonBuilder().setCustomId('agent_show_saved').setLabel('Ver cadastro').setStyle(ButtonStyle.Secondary).setEmoji('📋'),
-    new ButtonBuilder().setCustomId('agent_clear_saved').setLabel('Limpar lista').setStyle(ButtonStyle.Danger).setEmoji('🧹')
+    new ButtonBuilder().setCustomId('agent_roll_saved').setLabel('Sortear meus agentes').setStyle(ButtonStyle.Primary).setEmoji('ðŸŽ°'),
+    new ButtonBuilder().setCustomId('agent_show_saved').setLabel('Ver cadastro').setStyle(ButtonStyle.Secondary).setEmoji('ðŸ“‹'),
+    new ButtonBuilder().setCustomId('agent_clear_saved').setLabel('Limpar lista').setStyle(ButtonStyle.Danger).setEmoji('ðŸ§¹')
   );
 }
 
@@ -172,42 +172,81 @@ function buildAgentSetupEmbed(user) {
   const selected = getUserAgents(user.id);
   return new EmbedBuilder()
     .setColor(KILLJOY_YELLOW)
-    .setTitle('🎯 KILLJOY // ESCOLHA DE AGENTES')
+    .setTitle('ðŸŽ¯ KILLJOY // ESCOLHA DE AGENTES')
     .setDescription([
-      user + ', selecione os agentes que você tem/quer jogar nos menus abaixo.',
+      user + ', selecione os agentes que vocÃª tem/quer jogar nos menus abaixo.',
       '',
       selected.length ? '**Salvos agora:** ' + selected.join(', ') : '**Salvos agora:** nenhum agente cadastrado ainda.',
       '',
-      'Depois é só usar **Sortear meus agentes**. Eu salvo isso no arquivo local do bot.'
+      'Depois Ã© sÃ³ usar **Sortear meus agentes**. Eu salvo isso no arquivo local do bot.'
     ].join('\n'))
-    .setFooter({ text: 'Cadastro por pessoa — Patifes edition' })
+    .setFooter({ text: 'Cadastro por pessoa â€” Patifes edition' })
     .setTimestamp();
 }
 
 function buildAgentRouletteEmbed(user, picked, pool) {
   const spin = [...pool].filter(agent => agent !== picked).sort(() => Math.random() - 0.5).slice(0, 4);
-  const animation = [...spin, picked].map((agent, index) => (index + 1) + '. ' + agent).join(' → ');
+  const animation = [...spin, picked]
+    .map((agent, index) => `${agent === picked ? '✅' : '•'} **${index + 1}. ${agent}**`)
+    .join('\n');
   return new EmbedBuilder()
     .setColor(KILLJOY_YELLOW)
-    .setTitle('🎰 ROLETA DE AGENTE // RESULTADO')
+    .setTitle('🎯 AGENTE SORTEADO // ' + picked.toUpperCase())
     .setDescription([
       'A roleta da Killjoy girou para ' + user + '.',
       '',
-      '**Animação:** ' + animation,
+      '**Sequência da roleta**',
+      animation,
       '',
       '## ' + picked,
-      'Vai com fé. Se der errado, foi estatística experimental.'
+      'Vai com fÃ©. Se der errado, foi estatÃ­stica experimental.'
     ].join('\n'))
-    .setThumbnail(AGENT_IMAGES[picked] || null)
+    .setImage(AGENT_IMAGES[picked] || null)
     .setFooter({ text: 'Sorteado entre ' + pool.length + ' agente(s) cadastrados' })
     .setTimestamp();
+}
+
+function buildRouletteLoadingEmbed(user, pool, step, totalSteps) {
+  const filled = '▰'.repeat(step);
+  const empty = '▱'.repeat(totalSteps - step);
+  const preview = [...pool]
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 5)
+    .map(agent => `**${agent}**`)
+    .join(' → ');
+
+  return new EmbedBuilder()
+    .setColor(KILLJOY_YELLOW)
+    .setTitle('🎰 KILLJOY // CARREGANDO ROLETA')
+    .setDescription([
+      `Calibrando agentes para ${user}...`,
+      '',
+      `\`[${filled}${empty}]\` ${Math.round((step / totalSteps) * 100)}%`,
+      '',
+      `**Passando por:** ${preview}`
+    ].join('\n'));
+}
+
+async function runAgentRoulette(interaction, pool) {
+  const picked = randomAgent(pool);
+  const totalSteps = 6;
+
+  await interaction.reply({ embeds: [buildRouletteLoadingEmbed(interaction.user, pool, 1, totalSteps)] });
+
+  for (let step = 2; step <= totalSteps; step++) {
+    await new Promise(resolve => setTimeout(resolve, 650));
+    await interaction.editReply({ embeds: [buildRouletteLoadingEmbed(interaction.user, pool, step, totalSteps)] });
+  }
+
+  await new Promise(resolve => setTimeout(resolve, 450));
+  await interaction.editReply({ embeds: [buildAgentRouletteEmbed(interaction.user, picked, pool)] });
 }
 
 function buildAgentsListEmbed(user) {
   const selected = getUserAgents(user.id);
   return new EmbedBuilder()
     .setColor(KILLJOY_YELLOW)
-    .setTitle('📋 Agentes cadastrados de ' + (user.globalName || user.username))
+    .setTitle('ðŸ“‹ Agentes cadastrados de ' + (user.globalName || user.username))
     .setDescription(selected.length ? selected.join(', ') : 'Nenhum agente cadastrado ainda. Use /sortear-agente para abrir a escolha.')
     .setFooter({ text: selected.length + '/' + VALORANT_AGENTS.length + ' agentes selecionados' })
     .setTimestamp();
@@ -229,18 +268,18 @@ async function ensureXodoRole(guild) {
 function buildAgentsPanelEmbed() {
   return new EmbedBuilder()
     .setColor(KILLJOY_YELLOW)
-    .setTitle('🎯 KILLJOY // SELETOR DE AGENTES')
+    .setTitle('ðŸŽ¯ KILLJOY // SELETOR DE AGENTES')
     .setDescription([
       'Escolha seus agentes nos menus abaixo e depois clique em **Sortear**.',
       '',
-      'A seleção é individual: cada pessoa mexe na própria lista usando este mesmo painel.',
+      'A seleÃ§Ã£o Ã© individual: cada pessoa mexe na prÃ³pria lista usando este mesmo painel.',
       '',
-      '**Botões**',
-      '🎰 Sortear — sorteia entre seus agentes salvos',
-      '📋 Meu cadastro — mostra sua lista atual',
-      '🧹 Limpar minha lista — apaga seu cadastro de agentes'
+      '**BotÃµes**',
+      'ðŸŽ° Sortear â€” sorteia entre seus agentes salvos',
+      'ðŸ“‹ Meu cadastro â€” mostra sua lista atual',
+      'ðŸ§¹ Limpar minha lista â€” apaga seu cadastro de agentes'
     ].join('\n'))
-    .setFooter({ text: 'Painel fixo dos Patifes — mantido automaticamente pela Killjoy' })
+    .setFooter({ text: 'Painel fixo dos Patifes â€” mantido automaticamente pela Killjoy' })
     .setTimestamp();
 }
 
@@ -284,10 +323,10 @@ async function ensureAgentsChannel(guild, shouldPostPanel = true) {
 }
 
 const killjoyLines = [
-  'calibrando os Patifes 🛠️',
-  'protegendo o servidor 💛',
-  'vigiando o lobby da ranked 🎯',
-  'organizando o caos com carinho ⚡'
+  'calibrando os Patifes ðŸ› ï¸',
+  'protegendo o servidor ðŸ’›',
+  'vigiando o lobby da ranked ðŸŽ¯',
+  'organizando o caos com carinho âš¡'
 ];
 
 const client = new Client({
@@ -316,11 +355,11 @@ let activeConnection = null;
 let currentFfmpegProc = null;
 
 audioPlayer.on(AudioPlayerStatus.Playing, () => {
-  console.log('[Killjoy Voice Engine] Tocando áudio ao vivo na call!');
+  console.log('[Killjoy Voice Engine] Tocando Ã¡udio ao vivo na call!');
 });
 
 audioPlayer.on(AudioPlayerStatus.Idle, () => {
-  console.log('[Killjoy Voice Engine] Reprodução finalizada / Parada.');
+  console.log('[Killjoy Voice Engine] ReproduÃ§Ã£o finalizada / Parada.');
   if (currentFfmpegProc) {
     try { currentFfmpegProc.kill('SIGKILL'); } catch (e) {}
     currentFfmpegProc = null;
@@ -341,11 +380,11 @@ async function registerSlashCommands() {
         .toJSON(),
       new SlashCommandBuilder()
         .setName('ping')
-        .setDescription('Confere se a Killjoy está online.')
+        .setDescription('Confere se a Killjoy estÃ¡ online.')
         .toJSON(),
       new SlashCommandBuilder()
         .setName('killjoy')
-        .setDescription('Mostra o painel rápido da Killjoy dos Patifes.')
+        .setDescription('Mostra o painel rÃ¡pido da Killjoy dos Patifes.')
         .toJSON(),
       new SlashCommandBuilder()
         .setName('ajuda')
@@ -356,12 +395,12 @@ async function registerSlashCommands() {
         .setDescription('Mostra seu perfil de jogador nos Patifes.')
         .addUserOption(option =>
           option.setName('membro')
-            .setDescription('Membro que você quer ver.')
+            .setDescription('Membro que vocÃª quer ver.')
             .setRequired(false))
         .toJSON(),
       new SlashCommandBuilder()
         .setName('registro')
-        .setDescription('Registra seu perfil básico nos Patifes.')
+        .setDescription('Registra seu perfil bÃ¡sico nos Patifes.')
         .addStringOption(option =>
           option.setName('jogo')
             .setDescription('Seu jogo principal.')
@@ -373,7 +412,7 @@ async function registerSlashCommands() {
         .toJSON(),
       new SlashCommandBuilder()
         .setName('lobby')
-        .setDescription('Abre uma chamada rápida para montar lobby.')
+        .setDescription('Abre uma chamada rÃ¡pida para montar lobby.')
         .addStringOption(option =>
           option.setName('jogo')
             .setDescription('Jogo do lobby.')
@@ -395,15 +434,15 @@ async function registerSlashCommands() {
         .toJSON(),
       new SlashCommandBuilder()
         .setName('agentes')
-        .setDescription('Mostra a lista de agentes disponíveis no sorteio.')
+        .setDescription('Mostra a lista de agentes disponÃ­veis no sorteio.')
         .toJSON(),
       new SlashCommandBuilder()
         .setName('dica')
-        .setDescription('Recebe uma dica rápida da Killjoy.')
+        .setDescription('Recebe uma dica rÃ¡pida da Killjoy.')
         .toJSON(),
       new SlashCommandBuilder()
         .setName('xodo')
-        .setDescription('Dá o cargo especial Xodó do Coca para alguém.')
+        .setDescription('DÃ¡ o cargo especial XodÃ³ do Coca para alguÃ©m.')
         .addUserOption(option =>
           option.setName('membro')
             .setDescription('Pessoa escolhida pelo Coca.')
@@ -460,11 +499,10 @@ client.on('interactionCreate', async interaction => {
   if (interaction.isButton() && interaction.customId === 'agent_panel_roll') {
     const pool = getUserAgents(interaction.user.id);
     if (!pool.length) {
-      await interaction.reply({ content: 'Você ainda não escolheu agentes no painel. Marca alguns nos menus primeiro.', ephemeral: true });
+      await interaction.reply({ content: 'VocÃª ainda nÃ£o escolheu agentes no painel. Marca alguns nos menus primeiro.', ephemeral: true });
       return;
     }
-    const picked = randomAgent(pool);
-    await interaction.reply({ embeds: [buildAgentRouletteEmbed(interaction.user, picked, pool)] });
+    await runAgentRoulette(interaction, pool);
     return;
   }
 
@@ -504,8 +542,7 @@ client.on('interactionCreate', async interaction => {
       await interaction.reply({ content: 'Escolhe pelo menos um agente antes de girar a roleta.', ephemeral: true });
       return;
     }
-    const picked = randomAgent(pool);
-    await interaction.reply({ embeds: [buildAgentRouletteEmbed(interaction.user, picked, pool)] });
+    await runAgentRoulette(interaction, pool);
     return;
   }
 
@@ -532,9 +569,9 @@ client.on('interactionCreate', async interaction => {
       embeds: [
         new EmbedBuilder()
           .setColor(KILLJOY_YELLOW)
-          .setTitle('🟢 Killjoy online')
-          .setDescription(`Tudo certo por aqui.\nLatência: **${latency}ms**`)
-          .setFooter({ text: 'Relax, eu já cuidei de tudo.' })
+          .setTitle('ðŸŸ¢ Killjoy online')
+          .setDescription(`Tudo certo por aqui.\nLatÃªncia: **${latency}ms**`)
+          .setFooter({ text: 'Relax, eu jÃ¡ cuidei de tudo.' })
           .setTimestamp()
       ],
       ephemeral: true
@@ -549,15 +586,15 @@ client.on('interactionCreate', async interaction => {
           .setColor(KILLJOY_YELLOW)
           .setTitle('KILLJOY // CENTRAL DOS PATIFES')
           .setDescription([
-            'Eu cuido do laboratório enquanto vocês inventam moda.',
+            'Eu cuido do laboratÃ³rio enquanto vocÃªs inventam moda.',
             '',
-            '**Comandos úteis**',
-            '`/sortear-agente` — escolhe um agente de VALORANT',
-            '`/ping` — confere se estou acordada',
+            '**Comandos Ãºteis**',
+            '`/sortear-agente` â€” escolhe um agente de VALORANT',
+            '`/ping` â€” confere se estou acordada',
             '',
-            'Sem drama. Só tecnologia aprovada e caos supervisionado. ⚡'
+            'Sem drama. SÃ³ tecnologia aprovada e caos supervisionado. âš¡'
           ].join('\n'))
-          .setFooter({ text: 'Killjoy dos Patifes 💛' })
+          .setFooter({ text: 'Killjoy dos Patifes ðŸ’›' })
           .setTimestamp()
       ],
       ephemeral: true
@@ -572,17 +609,17 @@ client.on('interactionCreate', async interaction => {
           .setColor(KILLJOY_YELLOW)
           .setTitle('KILLJOY // COMANDOS')
           .setDescription([
-            '`/killjoy` — painel rápido da bot',
-            '`/ping` — teste de vida',
-            '`/registro` — salva seu jogo/rank básico',
-            '`/perfil` — mostra um perfil',
-            '`/lobby` — chama gente pra jogar',
-            '`/ranked` — chamada rápida pra ranked',
-            '`/sortear-agente` — sorteia agente de VALORANT',
-            '`/agentes` — lista agentes do sorteio',
-            '`/dica` — dica rápida da Killjoy',
+            '`/killjoy` â€” painel rÃ¡pido da bot',
+            '`/ping` â€” teste de vida',
+            '`/registro` â€” salva seu jogo/rank bÃ¡sico',
+            '`/perfil` â€” mostra um perfil',
+            '`/lobby` â€” chama gente pra jogar',
+            '`/ranked` â€” chamada rÃ¡pida pra ranked',
+            '`/sortear-agente` â€” sorteia agente de VALORANT',
+            '`/agentes` â€” lista agentes do sorteio',
+            '`/dica` â€” dica rÃ¡pida da Killjoy',
             '',
-            'Clipes continuam removidos, como você pediu.'
+            'Clipes continuam removidos, como vocÃª pediu.'
           ].join('\n'))
           .setFooter({ text: 'Patifes sob controle. Quase sempre.' })
           .setTimestamp()
@@ -593,8 +630,8 @@ client.on('interactionCreate', async interaction => {
   }
 
   if (interaction.commandName === 'registro') {
-    const game = interaction.options.getString('jogo') || 'não informado';
-    const rank = interaction.options.getString('rank') || 'não informado';
+    const game = interaction.options.getString('jogo') || 'nÃ£o informado';
+    const rank = interaction.options.getString('rank') || 'nÃ£o informado';
     playerProfiles.set(interaction.user.id, {
       game,
       rank,
@@ -604,9 +641,9 @@ client.on('interactionCreate', async interaction => {
       embeds: [
         new EmbedBuilder()
           .setColor(KILLJOY_YELLOW)
-          .setTitle('✅ Registro atualizado')
+          .setTitle('âœ… Registro atualizado')
           .setDescription(`Perfil calibrado para ${interaction.user}.\n\n**Jogo:** ${game}\n**Rank:** ${rank}`)
-          .setFooter({ text: 'Dados temporários até a próxima reinicialização.' })
+          .setFooter({ text: 'Dados temporÃ¡rios atÃ© a prÃ³xima reinicializaÃ§Ã£o.' })
           .setTimestamp()
       ],
       ephemeral: true
@@ -621,11 +658,11 @@ client.on('interactionCreate', async interaction => {
       embeds: [
         new EmbedBuilder()
           .setColor(KILLJOY_YELLOW)
-          .setTitle(`👤 Perfil de ${target.globalName || target.username}`)
+          .setTitle(`ðŸ‘¤ Perfil de ${target.globalName || target.username}`)
           .setThumbnail(target.displayAvatarURL({ extension: 'png', size: 128 }))
           .setDescription(profile
             ? `**Jogo:** ${profile.game}\n**Rank:** ${profile.rank}\n**Atualizado:** <t:${Math.floor(profile.updatedAt.getTime() / 1000)}:R>`
-            : 'Ainda não encontrei cadastro para esse membro.\nUse `/registro` para calibrar o perfil.')
+            : 'Ainda nÃ£o encontrei cadastro para esse membro.\nUse `/registro` para calibrar o perfil.')
           .setFooter({ text: 'Killjoy // Patifes' })
           .setTimestamp()
       ]
@@ -640,9 +677,9 @@ client.on('interactionCreate', async interaction => {
       embeds: [
         new EmbedBuilder()
           .setColor(KILLJOY_YELLOW)
-          .setTitle('🎮 Lobby aberto')
-          .setDescription(`${interaction.user} está montando lobby de **${game}**.\n\n**Vagas:** ${slots}\nReage aí ou chama no chat antes que a fila vire bagunça.`)
-          .setFooter({ text: 'Organização por Killjoy, execução pelos Patifes.' })
+          .setTitle('ðŸŽ® Lobby aberto')
+          .setDescription(`${interaction.user} estÃ¡ montando lobby de **${game}**.\n\n**Vagas:** ${slots}\nReage aÃ­ ou chama no chat antes que a fila vire bagunÃ§a.`)
+          .setFooter({ text: 'OrganizaÃ§Ã£o por Killjoy, execuÃ§Ã£o pelos Patifes.' })
           .setTimestamp()
       ]
     });
@@ -656,8 +693,8 @@ client.on('interactionCreate', async interaction => {
       embeds: [
         new EmbedBuilder()
           .setColor(KILLJOY_YELLOW)
-          .setTitle('🏆 Ranked detectada')
-          .setDescription(`${interaction.user} está chamando para ranked de **${game}**.\n\nApareçam com mira, paciência e responsabilidade emocional mínima.`)
+          .setTitle('ðŸ† Ranked detectada')
+          .setDescription(`${interaction.user} estÃ¡ chamando para ranked de **${game}**.\n\nApareÃ§am com mira, paciÃªncia e responsabilidade emocional mÃ­nima.`)
           .setTimestamp()
       ]
     });
@@ -674,18 +711,18 @@ client.on('interactionCreate', async interaction => {
 
   if (interaction.commandName === 'dica') {
     const tips = [
-      'Não dá peek seco em tudo. Às vezes sobreviver também é highlight.',
-      'Se o time está quieto, fala o básico: onde viu, quanto tirou, se recuou.',
-      'Compra junto. Morrer rico no eco dos outros é crime de laboratório.',
-      'Depois do plant, joga pelo tempo. A spike é sua melhor duelista.',
-      'Se perdeu duas rounds fazendo igual, parabéns: você descobriu uma variável ruim.'
+      'NÃ£o dÃ¡ peek seco em tudo. Ã€s vezes sobreviver tambÃ©m Ã© highlight.',
+      'Se o time estÃ¡ quieto, fala o bÃ¡sico: onde viu, quanto tirou, se recuou.',
+      'Compra junto. Morrer rico no eco dos outros Ã© crime de laboratÃ³rio.',
+      'Depois do plant, joga pelo tempo. A spike Ã© sua melhor duelista.',
+      'Se perdeu duas rounds fazendo igual, parabÃ©ns: vocÃª descobriu uma variÃ¡vel ruim.'
     ];
     const tip = tips[Math.floor(Math.random() * tips.length)];
     await interaction.reply({
       embeds: [
         new EmbedBuilder()
           .setColor(KILLJOY_YELLOW)
-          .setTitle('💡 Dica da Killjoy')
+          .setTitle('ðŸ’¡ Dica da Killjoy')
           .setDescription(tip)
           .setTimestamp()
       ]
@@ -695,12 +732,12 @@ client.on('interactionCreate', async interaction => {
 
   if (interaction.commandName === 'xodo') {
     if (!interaction.inGuild()) {
-      await interaction.reply({ content: 'Esse comando só funciona dentro do servidor.', ephemeral: true });
+      await interaction.reply({ content: 'Esse comando sÃ³ funciona dentro do servidor.', ephemeral: true });
       return;
     }
 
     if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageRoles)) {
-      await interaction.reply({ content: 'Só quem pode gerenciar cargos consegue escolher os Xodós do Coca.', ephemeral: true });
+      await interaction.reply({ content: 'SÃ³ quem pode gerenciar cargos consegue escolher os XodÃ³s do Coca.', ephemeral: true });
       return;
     }
 
@@ -715,7 +752,7 @@ client.on('interactionCreate', async interaction => {
       embeds: [
         new EmbedBuilder()
           .setColor(KILLJOY_YELLOW)
-          .setTitle('🧸 Xodó do Coca escolhido')
+          .setTitle('ðŸ§¸ XodÃ³ do Coca escolhido')
           .setDescription(`${member} agora carrega o cargo **${XODO_ROLE_NAME}**.\n\nCuidado: fofura com certificado oficial dos Patifes.`)
           .setTimestamp()
       ]
@@ -725,12 +762,12 @@ client.on('interactionCreate', async interaction => {
 
   if (interaction.commandName === 'setup-agentes') {
     if (!interaction.inGuild()) {
-      await interaction.reply({ content: 'Esse comando só funciona dentro do servidor.', ephemeral: true });
+      await interaction.reply({ content: 'Esse comando sÃ³ funciona dentro do servidor.', ephemeral: true });
       return;
     }
 
     if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageChannels)) {
-      await interaction.reply({ content: 'Só quem pode gerenciar canais consegue recriar o painel de agentes.', ephemeral: true });
+      await interaction.reply({ content: 'SÃ³ quem pode gerenciar canais consegue recriar o painel de agentes.', ephemeral: true });
       return;
     }
 
@@ -773,7 +810,7 @@ if (TOKEN) {
     console.error('[Killjoy] Erro ao conectar no Discord:', err.message);
   });
 } else {
-  console.error('[Killjoy] DISCORD_TOKEN não foi definido. Configure essa variável no Render.');
+  console.error('[Killjoy] DISCORD_TOKEN nÃ£o foi definido. Configure essa variÃ¡vel no Render.');
 }
 
 async function ensureVoiceConnection(guild, channelId) {
@@ -788,7 +825,7 @@ async function ensureVoiceConnection(guild, channelId) {
 
     try {
       await entersState(activeConnection, VoiceConnectionStatus.Ready, 10_000);
-      console.log(`[Killjoy Voice Engine] Conexão pronta na call "${channelId}"!`);
+      console.log(`[Killjoy Voice Engine] ConexÃ£o pronta na call "${channelId}"!`);
     } catch (err) {
       console.error('[Killjoy Voice Engine] Timeout ao conectar na call:', err);
     }
@@ -856,7 +893,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.url.startsWith('/api/') && !isKtosRequestAllowed(req)) {
-    return sendJson(res, 401, { success: false, error: 'KTOS_PANEL_SECRET inválido.' });
+    return sendJson(res, 401, { success: false, error: 'KTOS_PANEL_SECRET invÃ¡lido.' });
   }
 
   if (req.method === 'GET' && (req.url === '/' || req.url === '/index.html')) {
@@ -871,7 +908,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && req.url === '/api/data') {
     if (!botReady) {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({ error: 'Bot ainda está conectando ao Discord...' }));
+      return res.end(JSON.stringify({ error: 'Bot ainda estÃ¡ conectando ao Discord...' }));
     }
 
     try {
@@ -926,7 +963,7 @@ const server = http.createServer(async (req, res) => {
       try {
         data = JSON.parse(body || '{}');
       } catch (err) {
-        return sendJson(res, 400, { success: false, error: 'JSON inválido enviado ao KTOS.' });
+        return sendJson(res, 400, { success: false, error: 'JSON invÃ¡lido enviado ao KTOS.' });
       }
 
       if (req.url === '/api/upload-and-play') {
@@ -936,7 +973,7 @@ const server = http.createServer(async (req, res) => {
           const targetChannelId = channelId || currentVoiceChannelId;
 
           if (!targetChannelId) throw new Error('Selecione uma call de voz primeiro!');
-          if (!base64Data) throw new Error('Nenhum arquivo de áudio recebido!');
+          if (!base64Data) throw new Error('Nenhum arquivo de Ã¡udio recebido!');
 
           const buffer = Buffer.from(base64Data.replace(/^data:audio\/\w+;base64,/, ''), 'base64');
           fs.writeFileSync(TEMP_AUDIO_PATH, buffer);
@@ -1060,7 +1097,7 @@ const server = http.createServer(async (req, res) => {
           } else if (data.action === 'warn') {
             const textChannels = guild.channels.cache.filter(c => c.isTextBased());
             const general = textChannels.find(c => c.name.includes('geral') || c.name.includes('avisos')) || textChannels.first();
-            await general.send(`⚠️ **AVISO DA KILLJOY:** ${member}, mantenha o respeito no laboratório! Motivo: ${data.value || 'Comportamento inadequado'}`);
+            await general.send(`âš ï¸ **AVISO DA KILLJOY:** ${member}, mantenha o respeito no laboratÃ³rio! Motivo: ${data.value || 'Comportamento inadequado'}`);
           }
           res.writeHead(200, { 'Content-Type': 'application/json' });
           return res.end(JSON.stringify({ success: true }));
@@ -1117,7 +1154,7 @@ const server = http.createServer(async (req, res) => {
             .setColor(data.color ? parseInt(data.color.replace('#',''), 16) : 0xffed00)
             .setTitle(data.title)
             .setDescription(data.message)
-            .setFooter({ text: 'Killjoy Control — Laboratório dos Patifes 🛠️' })
+            .setFooter({ text: 'Killjoy Control â€” LaboratÃ³rio dos Patifes ðŸ› ï¸' })
             .setTimestamp();
 
           if (data.imageUrl && data.imageUrl.startsWith('http')) {
@@ -1158,7 +1195,7 @@ const server = http.createServer(async (req, res) => {
           const actType = type === 'Watching' ? ActivityType.Watching : type === 'Listening' ? ActivityType.Listening : type === 'Streaming' ? ActivityType.Streaming : ActivityType.Playing;
           client.user.setPresence({
             status: status || 'online',
-            activities: [{ name: text || 'Os Patifes 🛠️', type: actType }]
+            activities: [{ name: text || 'Os Patifes ðŸ› ï¸', type: actType }]
           });
           res.writeHead(200, { 'Content-Type': 'application/json' });
           return res.end(JSON.stringify({ success: true }));
@@ -1188,9 +1225,10 @@ const server = http.createServer(async (req, res) => {
   }
 
   res.writeHead(404);
-  res.end('Não encontrado');
+  res.end('NÃ£o encontrado');
 });
 
 server.listen(PORT, () => {
   console.log(`[Killjoy Control Center Master] Painel rodando em http://localhost:${PORT}`);
 });
+
