@@ -65,6 +65,11 @@ const killjoyLines = [
   'vigiando o lobby da ranked 🎯',
   'organizando o caos com carinho ⚡'
 ];
+const CHANNEL_NAMES = {
+  registro: '🧪・registro',
+  agentes: '🎯・agentes',
+  suporte: '🎫・suporte'
+};
 
 const client = new Client({
   intents: [
@@ -80,7 +85,6 @@ let botReady = false;
 let defconLevel = 0;
 let currentVoiceChannelId = null;
 let currentVoiceChannelName = null;
-const playerProfiles = new Map();
 
 const audioPlayer = createAudioPlayer({
   behaviors: {
@@ -128,7 +132,6 @@ audioPlayer.on('error', error => {
   console.error('[Killjoy Voice Engine] Erro no player:', error.message);
 });
 
-// Registrar Slash Command /sortear-agente no Discord
 async function registerSlashCommands() {
   try {
     const commands = [
@@ -145,14 +148,6 @@ async function registerSlashCommands() {
         .setDescription('Confere se a Killjoy está online.')
         .toJSON(),
       new SlashCommandBuilder()
-        .setName('killjoy')
-        .setDescription('Mostra o painel rápido da Killjoy dos Patifes.')
-        .toJSON(),
-      new SlashCommandBuilder()
-        .setName('ajuda')
-        .setDescription('Mostra os comandos principais da Killjoy.')
-        .toJSON(),
-      new SlashCommandBuilder()
         .setName('perfil')
         .setDescription('Mostra seu perfil de jogador nos Patifes.')
         .addUserOption(option =>
@@ -167,43 +162,6 @@ async function registerSlashCommands() {
       new SlashCommandBuilder()
         .setName('suporte')
         .setDescription('Abre o painel de suporte/ticket da Killjoy.')
-        .toJSON(),
-      new SlashCommandBuilder()
-        .setName('painel')
-        .setDescription('Publica painéis úteis da Killjoy.')
-        .addStringOption(option =>
-          option.setName('tipo')
-            .setDescription('Painel que será publicado.')
-            .setRequired(true)
-            .addChoices(
-              { name: 'Registro', value: 'registro' },
-              { name: 'Suporte', value: 'suporte' },
-              { name: 'Regras', value: 'regras' },
-              { name: 'Informações', value: 'info' }
-            ))
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-        .toJSON(),
-      new SlashCommandBuilder()
-        .setName('lobby')
-        .setDescription('Abre uma chamada rápida para montar lobby.')
-        .addStringOption(option =>
-          option.setName('jogo')
-            .setDescription('Jogo do lobby.')
-            .setRequired(false))
-        .addIntegerOption(option =>
-          option.setName('vagas')
-            .setDescription('Quantidade de vagas.')
-            .setMinValue(1)
-            .setMaxValue(10)
-            .setRequired(false))
-        .toJSON(),
-      new SlashCommandBuilder()
-        .setName('ranked')
-        .setDescription('Chama os Patifes para uma ranked.')
-        .addStringOption(option =>
-          option.setName('jogo')
-            .setDescription('Jogo da ranked.')
-            .setRequired(false))
         .toJSON(),
       new SlashCommandBuilder()
         .setName('agentes')
@@ -234,14 +192,10 @@ async function registerSlashCommands() {
           subcommand.setName('resetar')
             .setDescription('Apaga seu cadastro de agentes.'))
         .toJSON(),
-      new SlashCommandBuilder()
-        .setName('dica')
-        .setDescription('Recebe uma dica rápida da Killjoy.')
-        .toJSON()
     ];
     const rest = new REST({ version: '10' }).setToken(TOKEN);
     await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
-    console.log('[Killjoy] Comandos registrados no Patifes: /sortear-agente, /agentes, /registro, /suporte, /painel, /ping, /killjoy, /ajuda, /perfil, /lobby, /ranked e /dica');
+    console.log('[Killjoy] Comandos públicos registrados no Patifes: /registro, /perfil, /agentes, /sortear-agente, /suporte e /ping');
   } catch (err) {
     console.error('[Killjoy] Erro ao registrar comandos:', err.message);
   }
@@ -297,34 +251,85 @@ function supportPanel() {
   };
 }
 
-function rulesPanel() {
+function agentsPanel() {
   return {
     embeds: [
       new EmbedBuilder()
         .setColor(KILLJOY_YELLOW)
-        .setTitle('📜 REGRAS DOS PATIFES')
-        .setDescription('Resenha sim, bagunça destrutiva não. O servidor fica melhor quando todo mundo consegue jogar e conversar em paz.')
-        .addFields(
-          { name: '💬 Respeito', value: 'Sem preconceito, perseguição, ameaça ou ofensa pesada.' },
-          { name: '🔊 Calls', value: 'Sem estourar microfone, floodar som ou atrapalhar partida dos outros.' },
-          { name: '🎮 Gameplay', value: 'Pode zoar, mas não estrague partida de propósito.' },
-          { name: '🚫 Spam', value: 'Nada de flood, golpe, link estranho ou divulgação sem permissão.' }
-        )
-        .setFooter({ text: 'Killjoy dos Patifes 💛' })
+        .setTitle('🎯 ROLETA DE AGENTES // KILLJOY')
+        .setDescription([
+          'Cadastre seus agentes pelo comando `/agentes` e depois use `/sortear-agente` para a Killjoy escolher por você.',
+          '',
+          '**Comandos úteis**',
+          '`/agentes adicionar` — adiciona um agente no seu cadastro',
+          '`/agentes remover` — remove um agente',
+          '`/agentes lista` — mostra sua lista',
+          '`/agentes todos` — libera todos os agentes',
+          '`/sortear-agente` — faz o sorteio'
+        ].join('\n'))
+        .setFooter({ text: 'Sem painel bugado. Só cadastro salvo e roleta limpa 💛' })
+        .setTimestamp()
     ]
   };
 }
 
-function infoPanel() {
-  return {
-    embeds: [
-      new EmbedBuilder()
-        .setColor(KILLJOY_YELLOW)
-        .setTitle('📌 INFO // PATIFES')
-        .setDescription('Bem-vindo(a) aos Patifes. Use os canais certos, entre nas calls, chame a tropa e, se precisar de ajuda, use `/suporte`.')
-        .setFooter({ text: 'Killjoy mantendo o laboratório minimamente estável 🛠️' })
-    ]
+async function ensureTextChannel(guild, name, topic) {
+  await guild.channels.fetch();
+  const cleanName = name.normalize('NFKD').replace(/[^\w-]/g, '').toLowerCase();
+  let channel = guild.channels.cache.find(item =>
+    item.type === ChannelType.GuildText &&
+    (item.name === name || item.name.toLowerCase().includes(cleanName.replace('-', '')))
+  );
+
+  if (!channel) {
+    channel = await guild.channels.create({
+      name,
+      type: ChannelType.GuildText,
+      topic
+    });
+  } else if (topic && channel.topic !== topic) {
+    await channel.setTopic(topic).catch(() => null);
+  }
+
+  return channel;
+}
+
+async function upsertBotPanel(channel, marker, payload) {
+  const messages = await channel.messages.fetch({ limit: 50 }).catch(() => null);
+  const existing = messages?.find(message =>
+    message.author.id === client.user.id &&
+    message.embeds[0]?.footer?.text?.includes(marker)
+  );
+
+  const markedPayload = {
+    ...payload,
+    embeds: (payload.embeds || []).map(embed => {
+      const data = embed.toJSON();
+      return EmbedBuilder.from(data).setFooter({
+        text: `${data.footer?.text || 'Killjoy dos Patifes'} • ${marker}`
+      });
+    })
   };
+
+  if (existing) await existing.edit(markedPayload);
+  else await channel.send(markedPayload);
+}
+
+async function setupCoreDiscordChannels() {
+  try {
+    const guild = await client.guilds.fetch(GUILD_ID);
+    const registro = await ensureTextChannel(guild, CHANNEL_NAMES.registro, 'Registro dos Patifes pela Killjoy.');
+    const agentes = await ensureTextChannel(guild, CHANNEL_NAMES.agentes, 'Cadastro e roleta de agentes da Killjoy.');
+    const suporte = await ensureTextChannel(guild, CHANNEL_NAMES.suporte, 'Suporte e tickets da Killjoy.');
+
+    await upsertBotPanel(registro, 'painel:registro', registrationPanel());
+    await upsertBotPanel(agentes, 'painel:agentes', agentsPanel());
+    await upsertBotPanel(suporte, 'painel:suporte', supportPanel());
+
+    console.log('[Killjoy] Canais principais conferidos: registro, agentes e suporte.');
+  } catch (err) {
+    console.warn('[Killjoy] Não consegui preparar os canais principais:', err.message);
+  }
 }
 
 async function handleSupportButton(interaction) {
@@ -459,6 +464,7 @@ client.on('ready', async () => {
   try {
     await registerSlashCommands();
     await cleanupOldAgentSelectorPanels();
+    await setupCoreDiscordChannels();
     rotatePresence();
     setInterval(rotatePresence, 10 * 60 * 1000);
   } catch (e) {
@@ -500,57 +506,6 @@ client.on('interactionCreate', async interaction => {
     return;
   }
 
-  if (interaction.commandName === 'killjoy') {
-    await interaction.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(KILLJOY_YELLOW)
-          .setTitle('KILLJOY // CENTRAL DOS PATIFES')
-          .setDescription([
-            'Eu cuido do laboratório enquanto vocês inventam moda.',
-            '',
-            '**Comandos úteis**',
-            '`/sortear-agente` — escolhe um agente de VALORANT',
-            '`/ping` — confere se estou acordada',
-            '',
-            'Sem drama. Só tecnologia aprovada e caos supervisionado. ⚡'
-          ].join('\n'))
-          .setFooter({ text: 'Killjoy dos Patifes 💛' })
-          .setTimestamp()
-      ],
-      ephemeral: true
-    });
-    return;
-  }
-
-  if (interaction.commandName === 'ajuda') {
-    await interaction.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(KILLJOY_YELLOW)
-          .setTitle('KILLJOY // COMANDOS')
-          .setDescription([
-            '`/killjoy` — painel rápido da bot',
-            '`/ping` — teste de vida',
-            '`/registro` — abre a ficha completa interativa',
-            '`/perfil` — mostra um perfil',
-            '`/suporte` — abre um ticket',
-            '`/lobby` — chama gente pra jogar',
-            '`/ranked` — chamada rápida pra ranked',
-            '`/agentes` — cadastra seus agentes',
-            '`/sortear-agente` — sorteia usando seu cadastro',
-            '`/dica` — dica rápida da Killjoy',
-            '',
-            'Clipes continuam removidos, como você pediu.'
-          ].join('\n'))
-          .setFooter({ text: 'Patifes sob controle. Quase sempre.' })
-          .setTimestamp()
-      ],
-      ephemeral: true
-    });
-    return;
-  }
-
   if (interaction.commandName === 'registro') {
     await interaction.reply({ ...registrationPanel(), ephemeral: true });
     return;
@@ -576,51 +531,6 @@ client.on('interactionCreate', async interaction => {
 
   if (interaction.commandName === 'suporte') {
     await interaction.reply(supportPanel());
-    return;
-  }
-
-  if (interaction.commandName === 'painel') {
-    const type = interaction.options.getString('tipo');
-    const payload = type === 'registro'
-      ? registrationPanel()
-      : type === 'suporte'
-        ? supportPanel()
-        : type === 'regras'
-          ? rulesPanel()
-          : infoPanel();
-    await interaction.reply({ content: 'Painel publicado. 💛', ephemeral: true });
-    await interaction.channel.send(payload);
-    return;
-  }
-
-  if (interaction.commandName === 'lobby') {
-    const game = interaction.options.getString('jogo') || 'VALORANT';
-    const slots = interaction.options.getInteger('vagas') || 5;
-    await interaction.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(KILLJOY_YELLOW)
-          .setTitle('🎮 Lobby aberto')
-          .setDescription(`${interaction.user} está montando lobby de **${game}**.\n\n**Vagas:** ${slots}\nReage aí ou chama no chat antes que a fila vire bagunça.`)
-          .setFooter({ text: 'Organização por Killjoy, execução pelos Patifes.' })
-          .setTimestamp()
-      ]
-    });
-    return;
-  }
-
-  if (interaction.commandName === 'ranked') {
-    const game = interaction.options.getString('jogo') || 'VALORANT';
-    await interaction.reply({
-      content: '@here',
-      embeds: [
-        new EmbedBuilder()
-          .setColor(KILLJOY_YELLOW)
-          .setTitle('🏆 Ranked detectada')
-          .setDescription(`${interaction.user} está chamando para ranked de **${game}**.\n\nApareçam com mira, paciência e responsabilidade emocional mínima.`)
-          .setTimestamp()
-      ]
-    });
     return;
   }
 
@@ -679,27 +589,6 @@ client.on('interactionCreate', async interaction => {
     profiles[interaction.user.id] = profile;
     await writeAgentProfiles(profiles);
     await interaction.reply({ content: `➖ **${agent}** removido. Total no cadastro: **${profile.agents.length}**.`, ephemeral: true });
-    return;
-  }
-
-  if (interaction.commandName === 'dica') {
-    const tips = [
-      'Não dá peek seco em tudo. Às vezes sobreviver também é highlight.',
-      'Se o time está quieto, fala o básico: onde viu, quanto tirou, se recuou.',
-      'Compra junto. Morrer rico no eco dos outros é crime de laboratório.',
-      'Depois do plant, joga pelo tempo. A spike é sua melhor duelista.',
-      'Se perdeu duas rounds fazendo igual, parabéns: você descobriu uma variável ruim.'
-    ];
-    const tip = tips[Math.floor(Math.random() * tips.length)];
-    await interaction.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(KILLJOY_YELLOW)
-          .setTitle('💡 Dica da Killjoy')
-          .setDescription(tip)
-          .setTimestamp()
-      ]
-    });
     return;
   }
 
