@@ -116,6 +116,10 @@ function maintenance(res, feature) {
   });
 }
 
+function wait(milliseconds) {
+  return new Promise(resolve => setTimeout(resolve, milliseconds));
+}
+
 audioPlayer.on(AudioPlayerStatus.Playing, () => {
   console.log('[Killjoy Voice Engine] Tocando áudio ao vivo na call!');
 });
@@ -694,8 +698,18 @@ client.on('interactionCreate', async interaction => {
       return;
     }
 
+    await interaction.reply('```ansi\n\u001b[1;33m[▰▱▱▱] ABRINDO ARSENAL...\u001b[0m\n```');
+    await wait(450);
+    await interaction.editReply('```ansi\n\u001b[1;36m[▰▰▱▱] GIRANDO ROLETA...\u001b[0m\n```');
+    await wait(450);
+    await interaction.editReply('```ansi\n\u001b[1;35m[▰▰▰▱] CALIBRANDO AGENTE...\u001b[0m\n```');
+    await wait(450);
+
     const pool = profile.all ? VALORANT_AGENTS : profile.agents.filter(agent => VALORANT_AGENTS.includes(agent));
     const picked = pool[Math.floor(Math.random() * pool.length)];
+    await interaction.editReply('```ansi\n\u001b[1;32m[▰▰▰▰] AGENTE CONFIRMADO!\u001b[0m\n```');
+    await wait(350);
+
     const visual = await getAgentVisual(picked);
     const color = visual?.backgroundGradientColors?.[0]
       ? Number.parseInt(visual.backgroundGradientColors[0].slice(0, 6), 16)
@@ -714,7 +728,7 @@ client.on('interactionCreate', async interaction => {
     if (visual?.displayIcon) embed.setThumbnail(visual.displayIcon);
     if (visual?.fullPortraitV2 || visual?.fullPortrait) embed.setImage(visual.fullPortraitV2 || visual.fullPortrait);
 
-    const response = await interaction.reply({ embeds: [embed], fetchReply: true });
+    const response = await interaction.editReply({ content: null, embeds: [embed] });
     setTimeout(() => response.delete().catch(() => {}), 2 * 60 * 1000);
     return;
   }
