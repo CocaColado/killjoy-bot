@@ -57,6 +57,7 @@ const AGENT_EMOJIS = {
   Omen: '👻', Phoenix: '🔥', Raze: '💣', Reyna: '👑', Sage: '💎',
   Skye: '🦅', Sova: '🏹', Tejo: '🚀', Viper: '☣️', Vyse: '🌹', Yoru: '🌀'
 };
+const AGENT_GROUPS = [VALORANT_AGENTS.slice(0, 14), VALORANT_AGENTS.slice(14)];
 let agentVisualsCache = null;
 
 const killjoyLines = [
@@ -252,24 +253,44 @@ function supportPanel() {
 }
 
 function agentsPanel() {
+  const selects = AGENT_GROUPS.map((agents, index) => new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId(`agents:select:${index}`)
+      .setPlaceholder(index === 0 ? 'Escolha seus agentes — parte 1' : 'Escolha seus agentes — parte 2')
+      .setMinValues(1)
+      .setMaxValues(agents.length)
+      .addOptions(agents.map(agent => ({
+        label: agent,
+        value: agent,
+        emoji: AGENT_EMOJIS[agent] || '🎯'
+      })))
+  ));
+
+  const controls = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('agents:all').setLabel('Tenho todos').setEmoji('✅').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId('agents:list').setLabel('Meu cadastro').setEmoji('📋').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId('agents:reset').setLabel('Limpar minha lista').setEmoji('🧹').setStyle(ButtonStyle.Danger)
+  );
+
   return {
     embeds: [
       new EmbedBuilder()
         .setColor(KILLJOY_YELLOW)
         .setTitle('🎯 ROLETA DE AGENTES // KILLJOY')
         .setDescription([
-          'Cadastre seus agentes pelo comando `/agentes` e depois use `/sortear-agente` para a Killjoy escolher por você.',
+          'Escolha nos menus abaixo os agentes que você tem. A Killjoy salva sua lista e usa isso quando você mandar `/sortear-agente`.',
           '',
-          '**Comandos úteis**',
-          '`/agentes adicionar` — adiciona um agente no seu cadastro',
-          '`/agentes remover` — remove um agente',
-          '`/agentes lista` — mostra sua lista',
-          '`/agentes todos` — libera todos os agentes',
-          '`/sortear-agente` — faz o sorteio'
+          '**Como usa**',
+          '1. Selecione seus agentes nos menus.',
+          '2. Use **Meu cadastro** se quiser conferir.',
+          '3. Quando for jogar, mande `/sortear-agente`.',
+          '',
+          'O painel não sorteia. Ele só guarda seu arsenal.'
         ].join('\n'))
-        .setFooter({ text: 'Sem painel bugado. Só cadastro salvo e roleta limpa 💛' })
+        .setFooter({ text: 'Cadastro salvo por pessoa • roleta limpa 💛' })
         .setTimestamp()
-    ]
+    ],
+    components: [...selects, controls]
   };
 }
 
@@ -415,6 +436,63 @@ async function handleSupportButton(interaction) {
   return false;
 }
 
+async function handleAgentPanelInteraction(interaction) {
+  const isAgentSelect = interaction.isStringSelectMenu() && interaction.customId.startsWith('agents:select:');
+  const isAgentButton = interaction.isButton() && interaction.customId.startsWith('agents:');
+  if (!isAgentSelect && !isAgentButton) return false;
+
+  const profiles = await readAgentProfiles();
+  const profile = profiles[interaction.user.id] ?? { all: false, agents: [] };
+
+  if (isAgentSelect) {
+    profile.all = false;
+    profile.agents = [...new Set([...(profile.agents ?? []), ...interaction.values])]
+      .filter(agent => VALORANT_AGENTS.includes(agent))
+      .sort((a, b) => VALORANT_AGENTS.indexOf(a) - VALORANT_AGENTS.indexOf(b));
+    profiles[interaction.user.id] = profile;
+    await writeAgentProfiles(profiles);
+    await interaction.reply({
+      content: `✅ Salvei **${interaction.values.join(', ')}** no seu arsenal. Total agora: **${profile.agents.length}** agente(s).\nUse \`/sortear-agente\` quando quiser girar a roleta.`,
+      ephemeral: true
+    });
+    return true;
+  }
+
+  const action = interaction.customId.split(':')[1];
+
+  if (action === 'all') {
+    profiles[interaction.user.id] = { all: true, agents: [] };
+    await writeAgentProfiles(profiles);
+    await interaction.reply({
+      content: '✅ Fechado: seu cadastro está como **todos os agentes**. Use `/sortear-agente` pra sortear.',
+      ephemeral: true
+    });
+    return true;
+  }
+
+  if (action === 'reset') {
+    delete profiles[interaction.user.id];
+    await writeAgentProfiles(profiles);
+    await interaction.reply({
+      content: '🧹 Limpei sua lista de agentes. Escolha de novo nos menus quando quiser.',
+      ephemeral: true
+    });
+    return true;
+  }
+
+  if (action === 'list') {
+    const content = profile.all
+      ? '📋 Seu cadastro: **todos os agentes**.'
+      : profile.agents?.length
+        ? `📋 Seus agentes (${profile.agents.length}): **${profile.agents.join(', ')}**`
+        : '📋 Você ainda não salvou agentes. Escolha nos menus acima.';
+    await interaction.reply({ content, ephemeral: true });
+    return true;
+  }
+
+  return false;
+}
+
 async function cleanupOldAgentSelectorPanels() {
   try {
     const guild = await client.guilds.fetch(GUILD_ID);
@@ -486,7 +564,12 @@ client.on('interactionCreate', async interaction => {
   }
 
   if (interaction.isButton()) {
+    if (await handleAgentPanelInteraction(interaction)) return;
     if (await handleSupportButton(interaction)) return;
+  }
+
+  if (interaction.isStringSelectMenu()) {
+    if (await handleAgentPanelInteraction(interaction)) return;
   }
 
   if (!interaction.isChatInputCommand()) return;
