@@ -1,5 +1,5 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { readJson, writeJsonAtomic } from './storage.js';
 
 const queuePath = 'data/lobby-queue.json';
 const profilesPath = 'data/registration-profiles.json';
@@ -7,8 +7,7 @@ const queueDuration = 4 * 60 * 60 * 1000;
 const rankWeight = { sem_elo: 0, ferro: 1, bronze: 2, prata: 3, ouro: 4, platina: 5, diamante: 6, ascendente: 7, imortal: 8, radiante: 9 };
 const gameNames = { valorant: '🔺 Valorant', marvel: '🦸 Marvel Rivals', roblox: '🧱 Roblox', minecraft: '⛏️ Minecraft', outros: '🎲 Outros' };
 
-async function readJson(path) { try { return JSON.parse(await readFile(path, 'utf8')); } catch { return {}; } }
-async function writeQueue(data) { await mkdir('data', { recursive: true }); await writeFile(queuePath, JSON.stringify(data, null, 2), 'utf8'); }
+async function writeQueue(data) { await writeJsonAtomic(queuePath, data); }
 function activeEntries(data, guildId) { const now = Date.now(); data[guildId] ??= {}; for (const [id, entry] of Object.entries(data[guildId])) if (entry.expiresAt <= now) delete data[guildId][id]; return data[guildId]; }
 function overlap(first = [], second = []) { return first.filter(value => second.includes(value)); }
 
@@ -39,7 +38,7 @@ async function refreshPanel(interaction, count) { if (interaction.message?.autho
 
 export async function handleLobbyInteraction(interaction) {
   if (!interaction.isButton() || !interaction.customId.startsWith('lobby:')) return false;
-  const action = interaction.customId.split(':')[1]; const queues = await readJson(queuePath); const entries = activeEntries(queues, interaction.guild.id); const profiles = await readJson(profilesPath); const profile = profiles[interaction.user.id];
+  const action = interaction.customId.split(':')[1]; const queues = await readJson(queuePath, {}); const entries = activeEntries(queues, interaction.guild.id); const profiles = await readJson(profilesPath, {}); const profile = profiles[interaction.user.id];
   if (action === 'join') {
     if (!profile?.completedAt) { await interaction.reply({ content: '🧪 Complete sua ficha em **#registro** antes de entrar na fila.', ephemeral: true }); return true; }
     entries[interaction.user.id] = { joinedAt: Date.now(), expiresAt: Date.now() + queueDuration }; await writeQueue(queues); await refreshPanel(interaction, Object.keys(entries).length);

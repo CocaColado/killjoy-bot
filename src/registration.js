@@ -1,5 +1,5 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, PermissionFlagsBits, StringSelectMenuBuilder } from 'discord.js';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { readJson, updateJson, writeJsonAtomic } from './storage.js';
 
 const profilesPath = 'data/registration-profiles.json';
 const agentProfilesPath = 'data/agent-profiles.json';
@@ -14,9 +14,8 @@ const labels = {
   looking: { duo: '🤝 Duo', trio: '👥 Trio', time: '🏆 Time fechado', amizade: '💛 Amizades', casual: '🎮 Partida casual' }
 };
 
-async function readJson(path) { try { return JSON.parse(await readFile(path, 'utf8')); } catch { return {}; } }
-async function readProfiles() { return readJson(profilesPath); }
-async function saveProfiles(data) { await mkdir('data', { recursive: true }); await writeFile(profilesPath, JSON.stringify(data, null, 2), 'utf8'); }
+async function readProfiles() { return readJson(profilesPath, {}); }
+async function saveProfiles(data) { await writeJsonAtomic(profilesPath, data); }
 function option(label, value, emoji) { return { label, value, emoji }; }
 function select(id, placeholder, values, max = 1) {
   return new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId(`registration:set:${id}`).setPlaceholder(placeholder).setMinValues(1).setMaxValues(max).addOptions(values));
@@ -110,10 +109,16 @@ async function publishProfile(interaction, profile, embed) {
 export async function handleRegistrationInteraction(interaction) {
   const relevant = (interaction.isButton() || interaction.isStringSelectMenu()) && interaction.customId.startsWith('registration:');
   if (!relevant) return false;
-  const profiles = await readProfiles(); const profile = profiles[interaction.user.id] ?? {};
+  let profiles = await readProfiles(); let profile = profiles[interaction.user.id] ?? {};
   if (interaction.isStringSelectMenu()) {
     const field = interaction.customId.split(':')[2]; const multi = ['games', 'schedule', 'roles', 'looking'].includes(field);
-    profile[field] = multi ? interaction.values : interaction.values[0]; profile.updatedAt = new Date().toISOString(); profiles[interaction.user.id] = profile; await saveProfiles(profiles);
+    profiles = await updateJson(profilesPath, {}, data => {
+      profile = data[interaction.user.id] ?? {};
+      profile[field] = multi ? interaction.values : interaction.values[0];
+      profile.updatedAt = new Date().toISOString();
+      data[interaction.user.id] = profile;
+      return data;
+    });
     const currentStep = ['rank', 'roles', 'mic', 'looking'].includes(field) ? 2 : 1;
     await interaction.update(currentStep === 1 ? stepOne(profile) : stepTwo(profile)); return true;
   }
