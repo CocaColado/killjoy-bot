@@ -82,6 +82,7 @@ const AGENT_IMAGES = {
 
 const DATA_DIR = path.join(__dirname, 'data');
 const AGENT_POOLS_FILE = path.join(DATA_DIR, 'agent-pools.json');
+const PANEL_STATE_FILE = path.join(DATA_DIR, 'panel-state.json');
 const agentPools = loadAgentPools();
 
 function loadAgentPools() {
@@ -97,6 +98,21 @@ function loadAgentPools() {
 function saveAgentPools() {
   fs.mkdirSync(DATA_DIR, { recursive: true });
   fs.writeFileSync(AGENT_POOLS_FILE, JSON.stringify(agentPools, null, 2), 'utf8');
+}
+
+function loadPanelState() {
+  try {
+    if (!fs.existsSync(PANEL_STATE_FILE)) return {};
+    return JSON.parse(fs.readFileSync(PANEL_STATE_FILE, 'utf8'));
+  } catch (err) {
+    console.error('[Killjoy] Não consegui ler panel-state.json:', err.message);
+    return {};
+  }
+}
+
+function savePanelState(state) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(PANEL_STATE_FILE, JSON.stringify(state, null, 2), 'utf8');
 }
 
 function getUserAgents(userId) {
@@ -189,7 +205,27 @@ async function ensureXodoRole(guild) {
   return role;
 }
 
-async function ensureAgentsChannel(guild, shouldPostPanel = false) {
+function buildAgentsPanelEmbed() {
+  return new EmbedBuilder()
+    .setColor(KILLJOY_YELLOW)
+    .setTitle('🎯 KILLJOY // CENTRAL DE AGENTES')
+    .setDescription([
+      'Escolha seus agentes, salve sua lista e deixe a Killjoy sortear só entre eles.',
+      '',
+      '**Como funciona**',
+      '1. Use /sortear-agente para abrir sua seleção privada.',
+      '2. Marque os agentes que você tem ou quer jogar.',
+      '3. Clique em Sortear meus agentes.',
+      '',
+      '**Extras**',
+      '/agentes mostra sua lista salva.',
+      '/setup-agentes só recria este painel se alguém apagar tudo.'
+    ].join('\n'))
+    .setFooter({ text: 'Painel fixo dos Patifes — mantido automaticamente pela Killjoy' })
+    .setTimestamp();
+}
+
+async function ensureAgentsChannel(guild, shouldPostPanel = true) {
   let channel = guild.channels.cache.find(existing =>
     existing.type === ChannelType.GuildText &&
     ['agentes', AGENTS_CHANNEL_NAME].includes(existing.name)
@@ -204,21 +240,25 @@ async function ensureAgentsChannel(guild, shouldPostPanel = false) {
   }
 
   if (shouldPostPanel) {
-    await channel.send({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(KILLJOY_YELLOW)
-          .setTitle('🎯 KILLJOY // CENTRAL DE AGENTES')
-          .setDescription([
-            'Canal recriado e calibrado.',
-            '',
-            'Use /sortear-agente para abrir sua escolha de agentes.',
-            'A Killjoy salva sua lista e sorteia só entre os agentes cadastrados.'
-          ].join('\n'))
-          .setFooter({ text: 'Killjoy dos Patifes — painel de agentes' })
-          .setTimestamp()
-      ]
-    });
+    const state = loadPanelState();
+    let panelMessage = null;
+
+    if (state.agentsPanelMessageId && state.agentsPanelChannelId === channel.id) {
+      panelMessage = await channel.messages.fetch(state.agentsPanelMessageId).catch(() => null);
+    }
+
+    const payload = { embeds: [buildAgentsPanelEmbed()], components: [] };
+
+    if (panelMessage) {
+      await panelMessage.edit(payload);
+    } else {
+      panelMessage = await channel.send(payload);
+      savePanelState({
+        ...state,
+        agentsPanelChannelId: channel.id,
+        agentsPanelMessageId: panelMessage.id
+      });
+    }
   }
 
   return channel;
@@ -371,7 +411,7 @@ client.on('ready', async () => {
   try {
     await registerSlashCommands();
     const guild = await client.guilds.fetch(GUILD_ID);
-    await ensureAgentsChannel(guild, false);
+    await ensureAgentsChannel(guild, true);
     rotatePresence();
     setInterval(rotatePresence, 10 * 60 * 1000);
   } catch (e) {
