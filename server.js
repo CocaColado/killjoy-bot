@@ -51,41 +51,131 @@ const VALORANT_AGENTS = [
   'Killjoy', 'Cypher', 'Sage', 'Chamber', 'Deadlock', 'Vyse'
 ];
 
-function randomAgent() {
-  return VALORANT_AGENTS[Math.floor(Math.random() * VALORANT_AGENTS.length)];
+const AGENT_IMAGES = {
+  Astra: 'https://media.valorant-api.com/agents/41fb69c1-4189-7b37-f117-bcaf1e96f1bf/displayicon.png',
+  Breach: 'https://media.valorant-api.com/agents/5f8d3a7f-467b-97f3-062c-13acf203c006/displayicon.png',
+  Brimstone: 'https://media.valorant-api.com/agents/9f0d8ba9-4140-b941-57d3-a7ad57c6b417/displayicon.png',
+  Chamber: 'https://media.valorant-api.com/agents/22697a3d-45bf-8dd7-4fec-84a9e28c69d7/displayicon.png',
+  Clove: 'https://media.valorant-api.com/agents/1dbf2edd-4729-0984-3115-daa5eed44993/displayicon.png',
+  Cypher: 'https://media.valorant-api.com/agents/117ed9e3-49f3-6512-3ccf-0cada7e3823b/displayicon.png',
+  Deadlock: 'https://media.valorant-api.com/agents/cc8b64c8-4b25-4ff9-6e7f-37b4da43d235/displayicon.png',
+  Fade: 'https://media.valorant-api.com/agents/dade69b4-4f5a-8528-247b-219e5a1facd6/displayicon.png',
+  Gekko: 'https://media.valorant-api.com/agents/e370fa57-4757-3604-3648-499e1f642d3f/displayicon.png',
+  Harbor: 'https://media.valorant-api.com/agents/95b78ed7-4637-86d9-7e41-71ba8c293152/displayicon.png',
+  Iso: 'https://media.valorant-api.com/agents/0e38b510-41a8-5780-5e8f-568b2a4f2d6c/displayicon.png',
+  Jett: 'https://media.valorant-api.com/agents/add6443a-41bd-e414-f6ad-e58d267f4e95/displayicon.png',
+  'KAY/O': 'https://media.valorant-api.com/agents/601dbbe7-43ce-be57-2a40-4abd24953621/displayicon.png',
+  Killjoy: 'https://media.valorant-api.com/agents/1e58de9c-4950-5125-93e9-a0aee9f98746/displayicon.png',
+  Neon: 'https://media.valorant-api.com/agents/bb2a4828-46eb-8cd1-e765-15848195d751/displayicon.png',
+  Omen: 'https://media.valorant-api.com/agents/8e253930-4c05-31dd-1b6c-968525494517/displayicon.png',
+  Phoenix: 'https://media.valorant-api.com/agents/eb93336a-449b-9c1b-0a54-a891f7921d69/displayicon.png',
+  Raze: 'https://media.valorant-api.com/agents/f94c3b30-42be-e959-889c-5aa313dba261/displayicon.png',
+  Reyna: 'https://media.valorant-api.com/agents/a3bfb853-43b2-7238-a4f1-ad90e9e46bcc/displayicon.png',
+  Sage: 'https://media.valorant-api.com/agents/569fdd95-4d10-43ab-ca70-79becc718b46/displayicon.png',
+  Skye: 'https://media.valorant-api.com/agents/6f2a04ca-43e0-be17-7f36-b3908627744d/displayicon.png',
+  Sova: 'https://media.valorant-api.com/agents/320b2a48-4d9b-a075-30f1-1f93a9b638fa/displayicon.png',
+  Tejo: 'https://media.valorant-api.com/agents/b444168c-4e35-8076-db47-ef9bf368f384/displayicon.png',
+  Viper: 'https://media.valorant-api.com/agents/707eab51-4836-f488-046a-cda6bf494859/displayicon.png',
+  Vyse: 'https://media.valorant-api.com/agents/efba5359-4016-a1e5-7626-b1ae76895940/displayicon.png',
+  Yoru: 'https://media.valorant-api.com/agents/7f94d92c-4234-0a36-9646-3a87eb8b5c89/displayicon.png'
+};
+
+const DATA_DIR = path.join(__dirname, 'data');
+const AGENT_POOLS_FILE = path.join(DATA_DIR, 'agent-pools.json');
+const agentPools = loadAgentPools();
+
+function loadAgentPools() {
+  try {
+    if (!fs.existsSync(AGENT_POOLS_FILE)) return {};
+    return JSON.parse(fs.readFileSync(AGENT_POOLS_FILE, 'utf8'));
+  } catch (err) {
+    console.error('[Killjoy] Não consegui ler agent-pools.json:', err.message);
+    return {};
+  }
 }
 
-function buildAgentRouletteEmbed(user, picked) {
-  const bait = VALORANT_AGENTS
-    .filter(agent => agent !== picked)
-    .sort(() => Math.random() - 0.5)
-    .slice(0, 3)
-    .join(' • ');
+function saveAgentPools() {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(AGENT_POOLS_FILE, JSON.stringify(agentPools, null, 2), 'utf8');
+}
 
+function getUserAgents(userId) {
+  const selected = Array.isArray(agentPools[userId]) ? agentPools[userId] : [];
+  return selected.filter(agent => VALORANT_AGENTS.includes(agent));
+}
+
+function randomAgent(pool = VALORANT_AGENTS) {
+  const safePool = pool.length ? pool : VALORANT_AGENTS;
+  return safePool[Math.floor(Math.random() * safePool.length)];
+}
+
+function buildAgentSelectRows(userId) {
+  const selected = new Set(getUserAgents(userId));
+  const chunks = [];
+  for (let i = 0; i < VALORANT_AGENTS.length; i += 25) chunks.push(VALORANT_AGENTS.slice(i, i + 25));
+  return chunks.map((chunk, index) => new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId('agent_select_' + index)
+      .setPlaceholder(index === 0 ? 'Escolha seus agentes — parte 1' : 'Escolha seus agentes — parte 2')
+      .setMinValues(0)
+      .setMaxValues(chunk.length)
+      .addOptions(chunk.map(agent => ({ label: agent, value: agent, default: selected.has(agent) })))
+  ));
+}
+
+function buildAgentControlRow() {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('agent_roll_saved').setLabel('Sortear meus agentes').setStyle(ButtonStyle.Primary).setEmoji('🎰'),
+    new ButtonBuilder().setCustomId('agent_show_saved').setLabel('Ver cadastro').setStyle(ButtonStyle.Secondary).setEmoji('📋'),
+    new ButtonBuilder().setCustomId('agent_clear_saved').setLabel('Limpar lista').setStyle(ButtonStyle.Danger).setEmoji('🧹')
+  );
+}
+
+function buildAgentSetupEmbed(user) {
+  const selected = getUserAgents(user.id);
   return new EmbedBuilder()
     .setColor(KILLJOY_YELLOW)
-    .setTitle('🎰 ROLETA DE AGENTE // VALORANT')
+    .setTitle('🎯 KILLJOY // ESCOLHA DE AGENTES')
     .setDescription([
-      `A roleta girou para ${user}.`,
+      user + ', selecione os agentes que você tem/quer jogar nos menus abaixo.',
       '',
-      `**Resultado:** ${picked}`,
-      bait ? `**Quase caiu em:** ${bait}` : '',
+      selected.length ? '**Salvos agora:** ' + selected.join(', ') : '**Salvos agora:** nenhum agente cadastrado ainda.',
       '',
-      'Vai com fé. Se der errado, foi estatística experimental.'
-    ].filter(Boolean).join('\n'))
-    .setFooter({ text: 'Killjoy dos Patifes — tecnologia aprovada ⚡' })
+      'Depois é só usar **Sortear meus agentes**. Eu salvo isso no arquivo local do bot.'
+    ].join('\n'))
+    .setFooter({ text: 'Cadastro por pessoa — Patifes edition' })
     .setTimestamp();
 }
 
-function buildAgentRouletteRow() {
-  return new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId('agent_roulette_again')
-      .setLabel('Girar de novo')
-      .setStyle(ButtonStyle.Primary)
-      .setEmoji('🎰')
-  );
+function buildAgentRouletteEmbed(user, picked, pool) {
+  const spin = [...pool].filter(agent => agent !== picked).sort(() => Math.random() - 0.5).slice(0, 4);
+  const animation = [...spin, picked].map((agent, index) => (index + 1) + '. ' + agent).join(' → ');
+  return new EmbedBuilder()
+    .setColor(KILLJOY_YELLOW)
+    .setTitle('🎰 ROLETA DE AGENTE // RESULTADO')
+    .setDescription([
+      'A roleta da Killjoy girou para ' + user + '.',
+      '',
+      '**Animação:** ' + animation,
+      '',
+      '## ' + picked,
+      'Vai com fé. Se der errado, foi estatística experimental.'
+    ].join('\n'))
+    .setThumbnail(AGENT_IMAGES[picked] || null)
+    .setFooter({ text: 'Sorteado entre ' + pool.length + ' agente(s) cadastrados' })
+    .setTimestamp();
 }
+
+function buildAgentsListEmbed(user) {
+  const selected = getUserAgents(user.id);
+  return new EmbedBuilder()
+    .setColor(KILLJOY_YELLOW)
+    .setTitle('📋 Agentes cadastrados de ' + (user.globalName || user.username))
+    .setDescription(selected.length ? selected.join(', ') : 'Nenhum agente cadastrado ainda. Use /sortear-agente para abrir a escolha.')
+    .setFooter({ text: selected.length + '/' + VALORANT_AGENTS.length + ' agentes selecionados' })
+    .setTimestamp();
+}
+
 
 async function ensureXodoRole(guild) {
   let role = guild.roles.cache.find(existing => existing.name === XODO_ROLE_NAME);
@@ -290,11 +380,46 @@ client.on('ready', async () => {
 });
 
 client.on('interactionCreate', async interaction => {
-  if (interaction.isButton() && interaction.customId === 'agent_roulette_again') {
-    const picked = randomAgent();
+  if (interaction.isStringSelectMenu() && interaction.customId.startsWith('agent_select_')) {
+    const selected = new Set(getUserAgents(interaction.user.id));
+    const index = Number(interaction.customId.replace('agent_select_', ''));
+    const chunk = VALORANT_AGENTS.slice(index * 25, index * 25 + 25);
+
+    for (const agent of chunk) selected.delete(agent);
+    for (const agent of interaction.values) selected.add(agent);
+
+    agentPools[interaction.user.id] = [...selected].filter(agent => VALORANT_AGENTS.includes(agent));
+    saveAgentPools();
+
     await interaction.update({
-      embeds: [buildAgentRouletteEmbed(interaction.user, picked)],
-      components: [buildAgentRouletteRow()]
+      embeds: [buildAgentSetupEmbed(interaction.user)],
+      components: [...buildAgentSelectRows(interaction.user.id), buildAgentControlRow()]
+    });
+    return;
+  }
+
+  if (interaction.isButton() && interaction.customId === 'agent_roll_saved') {
+    const pool = getUserAgents(interaction.user.id);
+    if (!pool.length) {
+      await interaction.reply({ content: 'Escolhe pelo menos um agente antes de girar a roleta.', ephemeral: true });
+      return;
+    }
+    const picked = randomAgent(pool);
+    await interaction.reply({ embeds: [buildAgentRouletteEmbed(interaction.user, picked, pool)] });
+    return;
+  }
+
+  if (interaction.isButton() && interaction.customId === 'agent_show_saved') {
+    await interaction.reply({ embeds: [buildAgentsListEmbed(interaction.user)], ephemeral: true });
+    return;
+  }
+
+  if (interaction.isButton() && interaction.customId === 'agent_clear_saved') {
+    delete agentPools[interaction.user.id];
+    saveAgentPools();
+    await interaction.update({
+      embeds: [buildAgentSetupEmbed(interaction.user)],
+      components: [...buildAgentSelectRows(interaction.user.id), buildAgentControlRow()]
     });
     return;
   }
@@ -441,13 +566,7 @@ client.on('interactionCreate', async interaction => {
 
   if (interaction.commandName === 'agentes') {
     await interaction.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(KILLJOY_YELLOW)
-          .setTitle('🎯 Agentes no sorteio')
-          .setDescription(VALORANT_AGENTS.join(', '))
-          .setFooter({ text: 'Use /sortear-agente para deixar o destino decidir.' })
-      ],
+      embeds: [buildAgentsListEmbed(interaction.user)],
       ephemeral: true
     });
     return;
@@ -524,13 +643,14 @@ client.on('interactionCreate', async interaction => {
   }
 
   if (interaction.commandName === 'sortear-agente') {
-    const picked = randomAgent();
     await interaction.reply({
-      embeds: [buildAgentRouletteEmbed(interaction.user, picked)],
-      components: [buildAgentRouletteRow()]
+      embeds: [buildAgentSetupEmbed(interaction.user)],
+      components: [...buildAgentSelectRows(interaction.user.id), buildAgentControlRow()],
+      ephemeral: true
     });
     return;
-  }});
+  }
+});
 
 function rotatePresence() {
   if (!client.user) return;
