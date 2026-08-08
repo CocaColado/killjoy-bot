@@ -29,4 +29,4 @@ const state = {
   playerProfiles: new Map(),
 };
 
-module.exports = state;
+export default state;

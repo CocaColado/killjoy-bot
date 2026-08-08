@@ -1,11 +1,11 @@
-const { EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
-const store = require('../../state/store');
-const { saveProfilesDB, saveAgentsDB } = require('../../utils/db');
+import { EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from 'discord.js';
+import store from '../../state/store.js';
+import { saveProfilesDB, saveAgentsDB } from '../../utils/db.js';
 
 // All Valorant Agents Hardcoded for Fallback
 const ALL_VALORANT_AGENTS = ['Astra', 'Breach', 'Brimstone', 'Chamber', 'Clove', 'Cypher', 'Deadlock', 'Fade', 'Gekko', 'Harbor', 'Iso', 'Jett', 'KAY/O', 'Killjoy', 'Neon', 'Omen', 'Phoenix', 'Raze', 'Reyna', 'Sage', 'Skye', 'Sova', 'Vyse', 'Yoru'];
 
-module.exports = async function handleInteraction(interaction) {
+export default async function handleInteraction(interaction) {
   try {
     const customId = interaction.customId || '';
 

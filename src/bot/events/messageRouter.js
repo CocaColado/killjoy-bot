@@ -1,5 +1,5 @@
-const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ButtonBuilder, ButtonStyle, ChannelType } = require('discord.js');
-const store = require('../../state/store');
+import { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ButtonBuilder, ButtonStyle, ChannelType } from 'discord.js';
+import store from '../../state/store.js';
 
 // All Valorant Agents & Split
 const ALL_VALORANT_AGENTS = ['Astra', 'Breach', 'Brimstone', 'Chamber', 'Clove', 'Cypher', 'Deadlock', 'Fade', 'Gekko', 'Harbor', 'Iso', 'Jett', 'KAY/O', 'Killjoy', 'Neon', 'Omen', 'Phoenix', 'Raze', 'Reyna', 'Sage', 'Skye', 'Sova', 'Vyse', 'Yoru'];
@@ -13,7 +13,7 @@ const AGENT_EMOJIS = {
   'Sage': '🧊', 'Skye': '🦅', 'Sova': '🏹', 'Vyse': '🪽', 'Yoru': '🦊'
 };
 
-module.exports = async function handleMessage(message) {
+export default async function handleMessage(message) {
   if (message.author.bot) return;
 
   // DM Listener

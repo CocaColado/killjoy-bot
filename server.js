@@ -32,6 +32,8 @@ import {
 } from '@discordjs/voice';
 import ffmpegPath from 'ffmpeg-static';
 import prism from 'prism-media';
+import handleInteraction from './src/bot/events/interactionRouter.js';
+import handleMessage from './src/bot/events/messageRouter.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -307,7 +309,6 @@ function buildDrawnAgentEmbed(user, drawnAgent, poolSize) {
 }
 
 // Message Listener for "sortear agente" text command in chat
-const handleMessage = require('./src/bot/events/messageRouter');
 
 client.on('messageCreate', async (message) => {
   await handleMessage(message);
@@ -316,7 +317,6 @@ client.on('messageCreate', async (message) => {
 /* ========================================================================= */
 /* 🎯 DISCORD INTERACTION SYSTEM: SLASH COMMANDS & BUTTONS & SELECT MENUS    */
 /* ========================================================================= */
-const handleInteraction = require('./src/bot/events/interactionRouter');
 
 client.on('interactionCreate', async (interaction) => {
   await handleInteraction(interaction);

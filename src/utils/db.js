@@ -1,6 +1,10 @@
-const fs = require('fs');
-const path = require('path');
-const store = require('../state/store');
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import store from '../state/store.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const AGENTS_DB_PATH = path.join(__dirname, '../../user_agents.json');
 const PROFILES_DB_PATH = path.join(__dirname, '../../player_profiles.json');
@@ -68,7 +72,7 @@ function initDB() {
   store.userAgentsMap = loadAgentsDB();
 }
 
-module.exports = {
+export {
   loadProfilesDB,
   saveProfilesDB,
   loadAgentsDB,
