@@ -13,6 +13,7 @@ import {
   StringSelectMenuBuilder,
   ButtonBuilder,
   ButtonStyle,
+  PermissionFlagsBits,
   REST,
   Routes,
   SlashCommandBuilder
@@ -37,15 +38,65 @@ const PORT = process.env.PORT || 3000;
 const TOKEN = process.env.DISCORD_TOKEN;
 const GUILD_ID = process.env.GUILD_ID || '1515187485531967629';
 const CLIENT_ID = process.env.CLIENT_ID || '1531112285219586088';
+const KTOS_PANEL_SECRET = process.env.KTOS_PANEL_SECRET || '';
 const TEMP_AUDIO_PATH = path.join(__dirname, 'temp_audio.mp3');
 
 const KILLJOY_YELLOW = 0xffed00;
+const XODO_ROLE_NAME = '🧸Xodó do Coca';
 const VALORANT_AGENTS = [
   'Jett', 'Reyna', 'Raze', 'Phoenix', 'Yoru', 'Neon', 'Iso',
   'Sova', 'Breach', 'Skye', 'KAY/O', 'Fade', 'Gekko', 'Tejo',
   'Brimstone', 'Viper', 'Omen', 'Astra', 'Harbor', 'Clove',
   'Killjoy', 'Cypher', 'Sage', 'Chamber', 'Deadlock', 'Vyse'
 ];
+
+function randomAgent() {
+  return VALORANT_AGENTS[Math.floor(Math.random() * VALORANT_AGENTS.length)];
+}
+
+function buildAgentRouletteEmbed(user, picked) {
+  const bait = VALORANT_AGENTS
+    .filter(agent => agent !== picked)
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 3)
+    .join(' • ');
+
+  return new EmbedBuilder()
+    .setColor(KILLJOY_YELLOW)
+    .setTitle('🎰 ROLETA DE AGENTE // VALORANT')
+    .setDescription([
+      `A roleta girou para ${user}.`,
+      '',
+      `**Resultado:** ${picked}`,
+      bait ? `**Quase caiu em:** ${bait}` : '',
+      '',
+      'Vai com fé. Se der errado, foi estatística experimental.'
+    ].filter(Boolean).join('\n'))
+    .setFooter({ text: 'Killjoy dos Patifes — tecnologia aprovada ⚡' })
+    .setTimestamp();
+}
+
+function buildAgentRouletteRow() {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('agent_roulette_again')
+      .setLabel('Girar de novo')
+      .setStyle(ButtonStyle.Primary)
+      .setEmoji('🎰')
+  );
+}
+
+async function ensureXodoRole(guild) {
+  let role = guild.roles.cache.find(existing => existing.name === XODO_ROLE_NAME);
+  if (!role) {
+    role = await guild.roles.create({
+      name: XODO_ROLE_NAME,
+      color: KILLJOY_YELLOW,
+      reason: 'Cargo especial criado pela Killjoy para os escolhidos do Coca'
+    });
+  }
+  return role;
+}
 
 const killjoyLines = [
   'calibrando os Patifes 🛠️',
@@ -101,7 +152,7 @@ async function registerSlashCommands() {
     const commands = [
       new SlashCommandBuilder()
         .setName('sortear-agente')
-        .setDescription('Sortee um agente do Valorant aleatório para a sua partida!')
+        .setDescription('Abre a roleta de agentes de VALORANT.')
         .toJSON(),
       new SlashCommandBuilder()
         .setName('ping')
@@ -164,6 +215,15 @@ async function registerSlashCommands() {
       new SlashCommandBuilder()
         .setName('dica')
         .setDescription('Recebe uma dica rápida da Killjoy.')
+        .toJSON(),
+      new SlashCommandBuilder()
+        .setName('xodo')
+        .setDescription('Dá o cargo especial Xodó do Coca para alguém.')
+        .addUserOption(option =>
+          option.setName('membro')
+            .setDescription('Pessoa escolhida pelo Coca.')
+            .setRequired(true))
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles)
         .toJSON()
     ];
     const rest = new REST({ version: '10' }).setToken(TOKEN);
@@ -187,6 +247,15 @@ client.on('ready', async () => {
 });
 
 client.on('interactionCreate', async interaction => {
+  if (interaction.isButton() && interaction.customId === 'agent_roulette_again') {
+    const picked = randomAgent();
+    await interaction.update({
+      embeds: [buildAgentRouletteEmbed(interaction.user, picked)],
+      components: [buildAgentRouletteRow()]
+    });
+    return;
+  }
+
   if (!interaction.isChatInputCommand()) return;
 
   if (interaction.commandName === 'ping') {
@@ -362,18 +431,44 @@ client.on('interactionCreate', async interaction => {
     return;
   }
 
-  if (interaction.commandName === 'sortear-agente') {
-    const picked = VALORANT_AGENTS[Math.floor(Math.random() * VALORANT_AGENTS.length)];
-    const embed = new EmbedBuilder()
-      .setColor(KILLJOY_YELLOW)
-      .setTitle('🎯 AGENTE SORTEADO // VALORANT')
-      .setDescription(`A Killjoy selecionou o agente **${picked}** para ${interaction.user}! 🛠️⚡`)
-      .setFooter({ text: 'Laboratório da Killjoy — Os Patifes 💛' })
-      .setTimestamp();
-    
-    await interaction.reply({ embeds: [embed] });
+  if (interaction.commandName === 'xodo') {
+    if (!interaction.inGuild()) {
+      await interaction.reply({ content: 'Esse comando só funciona dentro do servidor.', ephemeral: true });
+      return;
+    }
+
+    if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageRoles)) {
+      await interaction.reply({ content: 'Só quem pode gerenciar cargos consegue escolher os Xodós do Coca.', ephemeral: true });
+      return;
+    }
+
+    const targetUser = interaction.options.getUser('membro', true);
+    const guild = interaction.guild;
+    const member = await guild.members.fetch(targetUser.id);
+    const role = await ensureXodoRole(guild);
+
+    await member.roles.add(role, `Escolhido como ${XODO_ROLE_NAME} por ${interaction.user.tag}`);
+
+    await interaction.reply({
+      embeds: [
+        new EmbedBuilder()
+          .setColor(KILLJOY_YELLOW)
+          .setTitle('🧸 Xodó do Coca escolhido')
+          .setDescription(`${member} agora carrega o cargo **${XODO_ROLE_NAME}**.\n\nCuidado: fofura com certificado oficial dos Patifes.`)
+          .setTimestamp()
+      ]
+    });
+    return;
   }
-});
+
+  if (interaction.commandName === 'sortear-agente') {
+    const picked = randomAgent();
+    await interaction.reply({
+      embeds: [buildAgentRouletteEmbed(interaction.user, picked)],
+      components: [buildAgentRouletteRow()]
+    });
+    return;
+  }});
 
 function rotatePresence() {
   if (!client.user) return;
@@ -456,7 +551,32 @@ function playAudioInVoice(audioPathOrUrl, volume = 0.8) {
   audioPlayer.play(resource);
 }
 
+function sendJson(res, statusCode, payload) {
+  res.writeHead(statusCode, { 'Content-Type': 'application/json; charset=utf-8' });
+  return res.end(JSON.stringify(payload));
+}
+
+function isKtosRequestAllowed(req) {
+  if (!KTOS_PANEL_SECRET) return true;
+  const requestUrl = new URL(req.url, `http://localhost:${PORT}`);
+  const providedSecret = req.headers['x-ktos-secret'] || requestUrl.searchParams.get('token');
+  return providedSecret === KTOS_PANEL_SECRET;
+}
+
 const server = http.createServer(async (req, res) => {
+  if (req.method === 'GET' && req.url === '/health') {
+    return sendJson(res, 200, {
+      ok: true,
+      botReady,
+      bot: client.user?.tag || null,
+      service: 'killjoy-bot'
+    });
+  }
+
+  if (req.url.startsWith('/api/') && !isKtosRequestAllowed(req)) {
+    return sendJson(res, 401, { success: false, error: 'KTOS_PANEL_SECRET inválido.' });
+  }
+
   if (req.method === 'GET' && (req.url === '/' || req.url === '/index.html')) {
     const htmlPath = path.join(__dirname, 'index.html');
     if (fs.existsSync(htmlPath)) {
@@ -520,7 +640,12 @@ const server = http.createServer(async (req, res) => {
     let body = '';
     req.on('data', chunk => { body += chunk; });
     req.on('end', async () => {
-      const data = JSON.parse(body || '{}');
+      let data = {};
+      try {
+        data = JSON.parse(body || '{}');
+      } catch (err) {
+        return sendJson(res, 400, { success: false, error: 'JSON inválido enviado ao KTOS.' });
+      }
 
       if (req.url === '/api/upload-and-play') {
         try {
