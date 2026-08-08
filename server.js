@@ -174,11 +174,47 @@ async function registerSlashCommands() {
   }
 }
 
+async function cleanupOldAgentSelectorPanels() {
+  try {
+    const guild = await client.guilds.fetch(GUILD_ID);
+    await guild.channels.fetch();
+    const channel = guild.channels.cache.find(item =>
+      item.type === ChannelType.GuildText &&
+      item.name.toLowerCase().includes('agentes')
+    );
+
+    if (!channel?.messages) return;
+
+    const messages = await channel.messages.fetch({ limit: 100 });
+    const oldPanels = messages.filter(message => {
+      if (message.author.id !== client.user.id) return false;
+      const title = message.embeds[0]?.title ?? '';
+      const text = [
+        title,
+        message.embeds[0]?.description ?? '',
+        ...((message.embeds[0]?.fields ?? []).flatMap(field => [field.name, field.value]))
+      ].join(' ');
+      return text.includes('SELETOR DE AGENTES') || text.includes('CENTRAL DE AGENTES');
+    });
+
+    for (const message of oldPanels.values()) {
+      await message.delete().catch(() => null);
+    }
+
+    if (oldPanels.size > 0) {
+      console.log(`[Killjoy] Limpei ${oldPanels.size} painel(is) antigo(s) de agentes.`);
+    }
+  } catch (err) {
+    console.warn('[Killjoy] Não consegui limpar painéis antigos de agentes:', err.message);
+  }
+}
+
 client.on('ready', async () => {
   botReady = true;
   console.log(`[Killjoy] Online como ${client.user.tag}`);
   try {
     await registerSlashCommands();
+    await cleanupOldAgentSelectorPanels();
     rotatePresence();
     setInterval(rotatePresence, 10 * 60 * 1000);
   } catch (e) {
