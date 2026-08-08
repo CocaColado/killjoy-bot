@@ -42,7 +42,7 @@ const KTOS_PANEL_SECRET = process.env.KTOS_PANEL_SECRET || '';
 const TEMP_AUDIO_PATH = path.join(__dirname, 'temp_audio.mp3');
 
 const KILLJOY_YELLOW = 0xffed00;
-const XODO_ROLE_NAME = 'ðŸ§¸XodÃ³ do Coca';
+const XODO_ROLE_NAME = 'Xodo do Coca';
 const AGENTS_CHANNEL_NAME = 'agentes';
 const VALORANT_AGENTS = [
   'Jett', 'Reyna', 'Raze', 'Phoenix', 'Yoru', 'Neon', 'Iso',
@@ -132,7 +132,7 @@ function buildAgentSelectRows(userId) {
   return chunks.map((chunk, index) => new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId('agent_select_' + index)
-      .setPlaceholder(index === 0 ? 'Escolha seus agentes â€” parte 1' : 'Escolha seus agentes â€” parte 2')
+      .setPlaceholder(index === 0 ? 'Escolha seus agentes - parte 1' : 'Escolha seus agentes - parte 2')
       .setMinValues(0)
       .setMaxValues(chunk.length)
       .addOptions(chunk.map(agent => ({ label: agent, value: agent, default: selected.has(agent) })))
@@ -145,7 +145,7 @@ function buildFixedAgentPanelRows() {
   return chunks.map((chunk, index) => new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId('agent_panel_select_' + index)
-      .setPlaceholder(index === 0 ? 'Escolha seus agentes â€” parte 1' : 'Escolha seus agentes â€” parte 2')
+      .setPlaceholder(index === 0 ? 'Escolha seus agentes - parte 1' : 'Escolha seus agentes - parte 2')
       .setMinValues(0)
       .setMaxValues(chunk.length)
       .addOptions(chunk.map(agent => ({ label: agent, value: agent })))
@@ -174,20 +174,20 @@ function buildAgentSetupEmbed(user) {
     .setColor(KILLJOY_YELLOW)
     .setTitle('KILLJOY // ESCOLHA DE AGENTES')
     .setDescription([
-      user + ', selecione os agentes que vocÃª tem/quer jogar nos menus abaixo.',
+      user + ', selecione os agentes que voce tem ou quer jogar nos menus abaixo.',
       '',
-      selected.length ? '**Salvos agora:** ' + selected.join(', ') : '**Salvos agora:** nenhum agente cadastrado ainda.',
+      selected.length ? 'Salvos agora: ' + selected.join(', ') : 'Salvos agora: nenhum agente cadastrado ainda.',
       '',
-      'Depois Ã© sÃ³ usar **Sortear meus agentes**. Eu salvo isso no arquivo local do bot.'
+      'Depois clique em Sortear. Eu salvo isso no arquivo local do bot.'
     ].join('\n'))
-    .setFooter({ text: 'Cadastro por pessoa â€” Patifes edition' })
+    .setFooter({ text: 'Cadastro por pessoa - Patifes edition' })
     .setTimestamp();
 }
 
 function buildAgentRouletteEmbed(user, picked, pool) {
   return new EmbedBuilder()
     .setColor(KILLJOY_YELLOW)
-    .setTitle('🎯 AGENTE SORTEADO // ' + picked.toUpperCase())
+    .setTitle('AGENTE SORTEADO // ' + picked.toUpperCase())
     .setDescription([
       'A roleta da Killjoy girou para ' + user + '.',
       '',
@@ -212,7 +212,7 @@ function buildRouletteLoadingEmbed(user, pool, step, totalSteps) {
 
   return new EmbedBuilder()
     .setColor(KILLJOY_YELLOW)
-    .setTitle('🎰 KILLJOY // CARREGANDO ROLETA')
+    .setTitle('KILLJOY // CARREGANDO ROLETA')
     .setDescription([
       `Calibrando agentes para ${user}...`,
       '',
@@ -268,28 +268,22 @@ function buildAgentsPanelEmbed() {
     .setColor(KILLJOY_YELLOW)
     .setTitle('KILLJOY // SELETOR DE AGENTES')
     .setDescription([
-      'Escolha seus agentes nos menus abaixo e depois clique em **Sortear**.',
+      'Escolha seus agentes nos menus abaixo e depois clique em Sortear.',
       '',
-      'A seleÃ§Ã£o Ã© individual: cada pessoa mexe na prÃ³pria lista usando este mesmo painel.',
+      'Cada pessoa salva a propria lista usando este mesmo painel.',
       '',
-      '**BotÃµes**',
-      'Sortear — sorteia entre seus agentes salvos',
-      'Meu cadastro — mostra sua lista atual',
-      'Limpar minha lista — apaga seu cadastro de agentes'
+      'Botoes',
+      'Sortear - sorteia entre seus agentes salvos',
+      'Meu cadastro - mostra sua lista atual',
+      'Limpar minha lista - apaga seu cadastro de agentes'
     ].join('\n'))
-    .setFooter({ text: 'Painel fixo dos Patifes â€” mantido automaticamente pela Killjoy' })
+    .setFooter({ text: 'Painel fixo dos Patifes - mantido pela Killjoy' })
     .setTimestamp();
 }
 
 async function ensureAgentsChannel(guild, shouldPostPanel = true) {
   let channel = guild.channels.cache.find(existing =>
-    existing.type === ChannelType.GuildText &&
-    existing.name === AGENTS_CHANNEL_NAME
-  );
-
-  const brokenChannels = guild.channels.cache.filter(existing =>
-    existing.type === ChannelType.GuildText &&
-    ['ðŸŽ¯ãƒ»agentes', '🎯・agentes'].includes(existing.name)
+    existing.type === ChannelType.GuildText && existing.name === AGENTS_CHANNEL_NAME
   );
 
   if (!channel) {
@@ -298,12 +292,6 @@ async function ensureAgentsChannel(guild, shouldPostPanel = true) {
       type: ChannelType.GuildText,
       topic: 'Roleta de agentes da Killjoy para os Patifes.'
     });
-  }
-
-  for (const [, brokenChannel] of brokenChannels) {
-    if (brokenChannel.id !== channel.id) {
-      brokenChannel.setName('agentes-arquivo').catch(() => {});
-    }
   }
 
   if (shouldPostPanel) {
@@ -320,11 +308,7 @@ async function ensureAgentsChannel(guild, shouldPostPanel = true) {
       await panelMessage.edit(payload);
     } else {
       panelMessage = await channel.send(payload);
-      savePanelState({
-        ...state,
-        agentsPanelChannelId: channel.id,
-        agentsPanelMessageId: panelMessage.id
-      });
+      savePanelState({ ...state, agentsPanelChannelId: channel.id, agentsPanelMessageId: panelMessage.id });
     }
   }
 
