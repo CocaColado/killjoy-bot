@@ -1,6 +1,7 @@
 import { EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from 'discord.js';
 import store from '../../state/store.js';
 import { saveProfilesDB, saveAgentsDB } from '../../utils/db.js';
+import { handleAgentInteraction } from '../interactions/arsenal/arsenalRouter.js';
 
 // All Valorant Agents Hardcoded for Fallback
 const ALL_VALORANT_AGENTS = ['Astra', 'Breach', 'Brimstone', 'Chamber', 'Clove', 'Cypher', 'Deadlock', 'Fade', 'Gekko', 'Harbor', 'Iso', 'Jett', 'KAY/O', 'Killjoy', 'Neon', 'Omen', 'Phoenix', 'Raze', 'Reyna', 'Sage', 'Skye', 'Sova', 'Vyse', 'Yoru'];
@@ -44,53 +45,8 @@ export default async function handleInteraction(interaction) {
 
       // ARSENAL - PREFIX ROUTING
       if (namespace === 'agent' || customId.includes('agents_') || customId.includes('_am') || customId.includes('_ny')) {
-        const userId = interaction.user.id;
-
-        if (interaction.isStringSelectMenu()) {
-          const isMenu1 = customId === 'agent:add:1' || customId === 'agent:add:0' || customId.includes('_am');
-          const poolToRemove = isMenu1 ? AGENTS_AM : AGENTS_NY;
-
-          if (!store.userAgentsMap.has(userId)) store.userAgentsMap.set(userId, new Set());
-          const userSet = store.userAgentsMap.get(userId);
-
-          // Limpa agentes da parte respectiva
-          poolToRemove.forEach(agent => userSet.delete(agent));
-          
-          // Adiciona novos selecionados
-          interaction.values.forEach(agent => {
-            if (ALL_VALORANT_AGENTS.includes(agent)) userSet.add(agent);
-          });
-          
-          saveAgentsDB();
-          return await interaction.reply({ content: `✅ Arsenal atualizado com ${userSet.size} agentes!`, ephemeral: true });
-        }
-
-        if (interaction.isButton()) {
-          const action = customId.split(':')[1] || customId.replace('btn_agents_', '').replace('agents_', '');
-          
-          // ALL
-          if (action === 'all' || action === 'all_agents') {
-            store.userAgentsMap.set(userId, new Set(ALL_VALORANT_AGENTS));
-            saveAgentsDB();
-            return await interaction.reply({ content: '✅ Você adicionou **TODOS** os agentes ao seu arsenal!', ephemeral: true });
-          }
-
-          // RESET
-          if (action === 'reset' || action === 'clear') {
-            store.userAgentsMap.delete(userId);
-            saveAgentsDB();
-            return await interaction.reply({ content: '🧹 Seu arsenal de agentes foi resetado.', ephemeral: true });
-          }
-
-          // VIEW / LIST
-          if (action === 'view' || action === 'list') {
-            const userSet = store.userAgentsMap.get(userId);
-            if (!userSet || userSet.size === 0) {
-              return await interaction.reply({ content: 'Você não tem nenhum agente cadastrado ainda.', ephemeral: true });
-            }
-            return await interaction.reply({ content: `📋 Seu arsenal atual (${userSet.size} agentes):\n**${Array.from(userSet).join(', ')}**`, ephemeral: true });
-          }
-        }
+        const handled = await handleAgentInteraction(interaction);
+        if (handled) return;
       }
 
       if (customId === 'btn_register' || customId === 'btn_edit') {
