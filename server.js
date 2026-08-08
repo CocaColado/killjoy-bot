@@ -43,7 +43,7 @@ const TEMP_AUDIO_PATH = path.join(__dirname, 'temp_audio.mp3');
 
 const KILLJOY_YELLOW = 0xffed00;
 const XODO_ROLE_NAME = 'ðŸ§¸XodÃ³ do Coca';
-const AGENTS_CHANNEL_NAME = 'ðŸŽ¯ãƒ»agentes';
+const AGENTS_CHANNEL_NAME = 'agentes';
 const VALORANT_AGENTS = [
   'Jett', 'Reyna', 'Raze', 'Phoenix', 'Yoru', 'Neon', 'Iso',
   'Sova', 'Breach', 'Skye', 'KAY/O', 'Fade', 'Gekko', 'Tejo',
@@ -154,17 +154,17 @@ function buildFixedAgentPanelRows() {
 
 function buildFixedAgentPanelControls() {
   return new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('agent_panel_roll').setLabel('Sortear').setStyle(ButtonStyle.Primary).setEmoji('ðŸŽ°'),
-    new ButtonBuilder().setCustomId('agent_panel_show').setLabel('Meu cadastro').setStyle(ButtonStyle.Secondary).setEmoji('ðŸ“‹'),
-    new ButtonBuilder().setCustomId('agent_panel_clear').setLabel('Limpar minha lista').setStyle(ButtonStyle.Danger).setEmoji('ðŸ§¹')
+    new ButtonBuilder().setCustomId('agent_panel_roll').setLabel('Sortear').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId('agent_panel_show').setLabel('Meu cadastro').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('agent_panel_clear').setLabel('Limpar minha lista').setStyle(ButtonStyle.Danger)
   );
 }
 
 function buildAgentControlRow() {
   return new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('agent_roll_saved').setLabel('Sortear meus agentes').setStyle(ButtonStyle.Primary).setEmoji('ðŸŽ°'),
-    new ButtonBuilder().setCustomId('agent_show_saved').setLabel('Ver cadastro').setStyle(ButtonStyle.Secondary).setEmoji('ðŸ“‹'),
-    new ButtonBuilder().setCustomId('agent_clear_saved').setLabel('Limpar lista').setStyle(ButtonStyle.Danger).setEmoji('ðŸ§¹')
+    new ButtonBuilder().setCustomId('agent_roll_saved').setLabel('Sortear meus agentes').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId('agent_show_saved').setLabel('Ver cadastro').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('agent_clear_saved').setLabel('Limpar lista').setStyle(ButtonStyle.Danger)
   );
 }
 
@@ -172,7 +172,7 @@ function buildAgentSetupEmbed(user) {
   const selected = getUserAgents(user.id);
   return new EmbedBuilder()
     .setColor(KILLJOY_YELLOW)
-    .setTitle('ðŸŽ¯ KILLJOY // ESCOLHA DE AGENTES')
+    .setTitle('KILLJOY // ESCOLHA DE AGENTES')
     .setDescription([
       user + ', selecione os agentes que vocÃª tem/quer jogar nos menus abaixo.',
       '',
@@ -244,7 +244,7 @@ function buildAgentsListEmbed(user) {
   const selected = getUserAgents(user.id);
   return new EmbedBuilder()
     .setColor(KILLJOY_YELLOW)
-    .setTitle('ðŸ“‹ Agentes cadastrados de ' + (user.globalName || user.username))
+    .setTitle('Agentes cadastrados de ' + (user.globalName || user.username))
     .setDescription(selected.length ? selected.join(', ') : 'Nenhum agente cadastrado ainda. Use /sortear-agente para abrir a escolha.')
     .setFooter({ text: selected.length + '/' + VALORANT_AGENTS.length + ' agentes selecionados' })
     .setTimestamp();
@@ -266,16 +266,16 @@ async function ensureXodoRole(guild) {
 function buildAgentsPanelEmbed() {
   return new EmbedBuilder()
     .setColor(KILLJOY_YELLOW)
-    .setTitle('ðŸŽ¯ KILLJOY // SELETOR DE AGENTES')
+    .setTitle('KILLJOY // SELETOR DE AGENTES')
     .setDescription([
       'Escolha seus agentes nos menus abaixo e depois clique em **Sortear**.',
       '',
       'A seleÃ§Ã£o Ã© individual: cada pessoa mexe na prÃ³pria lista usando este mesmo painel.',
       '',
       '**BotÃµes**',
-      'ðŸŽ° Sortear â€” sorteia entre seus agentes salvos',
-      'ðŸ“‹ Meu cadastro â€” mostra sua lista atual',
-      'ðŸ§¹ Limpar minha lista â€” apaga seu cadastro de agentes'
+      'Sortear — sorteia entre seus agentes salvos',
+      'Meu cadastro — mostra sua lista atual',
+      'Limpar minha lista — apaga seu cadastro de agentes'
     ].join('\n'))
     .setFooter({ text: 'Painel fixo dos Patifes â€” mantido automaticamente pela Killjoy' })
     .setTimestamp();
@@ -284,7 +284,12 @@ function buildAgentsPanelEmbed() {
 async function ensureAgentsChannel(guild, shouldPostPanel = true) {
   let channel = guild.channels.cache.find(existing =>
     existing.type === ChannelType.GuildText &&
-    ['agentes', AGENTS_CHANNEL_NAME].includes(existing.name)
+    existing.name === AGENTS_CHANNEL_NAME
+  );
+
+  const brokenChannels = guild.channels.cache.filter(existing =>
+    existing.type === ChannelType.GuildText &&
+    ['ðŸŽ¯ãƒ»agentes', '🎯・agentes'].includes(existing.name)
   );
 
   if (!channel) {
@@ -293,6 +298,12 @@ async function ensureAgentsChannel(guild, shouldPostPanel = true) {
       type: ChannelType.GuildText,
       topic: 'Roleta de agentes da Killjoy para os Patifes.'
     });
+  }
+
+  for (const [, brokenChannel] of brokenChannels) {
+    if (brokenChannel.id !== channel.id) {
+      brokenChannel.setName('agentes-arquivo').catch(() => {});
+    }
   }
 
   if (shouldPostPanel) {
