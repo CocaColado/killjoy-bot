@@ -39,40 +39,58 @@ export default async function handleInteraction(interaction) {
 
     // MESSAGE COMPONENT HANDLER
     if (interaction.isMessageComponent()) {
-      if (['agents_am', 'agents_ny', 'agent_select_am', 'agent_select_ny', 'arsenal_am', 'arsenal_ny', 'sel_agents_am', 'sel_agents_ny', 'agent:add:1', 'agent:add:2'].includes(customId)) {
+      // Namespace Router
+      const namespace = customId.split(':')[0];
+
+      // ARSENAL - PREFIX ROUTING
+      if (namespace === 'agent' || customId.includes('agents_') || customId.includes('_am') || customId.includes('_ny')) {
         const userId = interaction.user.id;
-        if (!store.userAgentsMap.has(userId)) store.userAgentsMap.set(userId, new Set());
-        const userSet = store.userAgentsMap.get(userId);
-        
-        // Remove os agentes daquele pool se for um painel antigo que manda só uma metade
-        const isMenu1 = customId === 'agent:add:1' || customId === 'agents_am' || customId === 'sel_agents_am';
-        const poolToRemove = isMenu1 ? AGENTS_AM : AGENTS_NY;
-        poolToRemove.forEach(agent => userSet.delete(agent));
 
-        // Adiciona os selecionados
-        interaction.values.forEach(agent => userSet.add(agent));
-        saveAgentsDB();
-        return await interaction.reply({ content: `✅ Agentes adicionados ao seu arsenal: **${interaction.values.join(', ')}**`, ephemeral: true });
-      }
+        if (interaction.isStringSelectMenu()) {
+          const isMenu1 = customId === 'agent:add:1' || customId === 'agent:add:0' || customId.includes('_am');
+          const poolToRemove = isMenu1 ? AGENTS_AM : AGENTS_NY;
 
-      if (['agents_all', 'agent_all', 'arsenal_all', 'btn_agents_all', 'btn_all_agents', 'agent:all', 'agent:all_agents', 'agent:all-agents'].includes(customId)) {
-        store.userAgentsMap.set(interaction.user.id, new Set(ALL_VALORANT_AGENTS));
-        saveAgentsDB();
-        return await interaction.reply({ content: '✅ Você adicionou **TODOS** os agentes ao seu arsenal!', ephemeral: true });
-      }
+          if (!store.userAgentsMap.has(userId)) store.userAgentsMap.set(userId, new Set());
+          const userSet = store.userAgentsMap.get(userId);
 
-      if (['agents_reset', 'agent_reset', 'arsenal_reset', 'btn_agents_reset', 'btn_reset_agents', 'btn_agents_clear', 'agent:reset', 'agent:clear', 'agent:reset_agents'].includes(customId)) {
-        store.userAgentsMap.delete(interaction.user.id);
-        saveAgentsDB();
-        return await interaction.reply({ content: '🧹 Seu arsenal de agentes foi resetado.', ephemeral: true });
-      }
-
-      if (['agents_view', 'agent_view', 'arsenal_view', 'btn_agents_view', 'btn_view_agents', 'agent:view', 'agent:view_agents', 'agent:view-agents'].includes(customId)) {
-        const userSet = store.userAgentsMap.get(interaction.user.id);
-        if (!userSet || userSet.size === 0) {
-          return await interaction.reply({ content: 'Você não tem nenhum agente cadastrado ainda.', ephemeral: true });
+          // Limpa agentes da parte respectiva
+          poolToRemove.forEach(agent => userSet.delete(agent));
+          
+          // Adiciona novos selecionados
+          interaction.values.forEach(agent => {
+            if (ALL_VALORANT_AGENTS.includes(agent)) userSet.add(agent);
+          });
+          
+          saveAgentsDB();
+          return await interaction.reply({ content: `✅ Arsenal atualizado com ${userSet.size} agentes!`, ephemeral: true });
         }
-        return await interaction.reply({ content: `📋 Seu arsenal atual (${userSet.size} agentes):\n**${Array.from(userSet).join(', ')}**`, ephemeral: true });
+
+        if (interaction.isButton()) {
+          const action = customId.split(':')[1] || customId.replace('btn_agents_', '').replace('agents_', '');
+          
+          // ALL
+          if (action === 'all' || action === 'all_agents') {
+            store.userAgentsMap.set(userId, new Set(ALL_VALORANT_AGENTS));
+            saveAgentsDB();
+            return await interaction.reply({ content: '✅ Você adicionou **TODOS** os agentes ao seu arsenal!', ephemeral: true });
+          }
+
+          // RESET
+          if (action === 'reset' || action === 'clear') {
+            store.userAgentsMap.delete(userId);
+            saveAgentsDB();
+            return await interaction.reply({ content: '🧹 Seu arsenal de agentes foi resetado.', ephemeral: true });
+          }
+
+          // VIEW / LIST
+          if (action === 'view' || action === 'list') {
+            const userSet = store.userAgentsMap.get(userId);
+            if (!userSet || userSet.size === 0) {
+              return await interaction.reply({ content: 'Você não tem nenhum agente cadastrado ainda.', ephemeral: true });
+            }
+            return await interaction.reply({ content: `📋 Seu arsenal atual (${userSet.size} agentes):\n**${Array.from(userSet).join(', ')}**`, ephemeral: true });
+          }
+        }
       }
 
       if (customId === 'btn_register' || customId === 'btn_edit') {
@@ -143,4 +161,4 @@ export default async function handleInteraction(interaction) {
       interaction.reply({ content: 'Ocorreu um erro interno na interação.', ephemeral: true }).catch(() => {});
     }
   }
-};
+}
