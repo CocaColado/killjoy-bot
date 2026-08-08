@@ -330,6 +330,33 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
+  if (content === '!painel-agentes') {
+    if (!message.member?.permissions.has('Administrator')) return message.reply('❌ Sem permissão.');
+    try {
+      const embed = new EmbedBuilder()
+        .setColor(0xFFE600)
+        .setTitle('🔫 Arsenal de Agentes da Killjoy')
+        .setDescription('**Cadastre seus agentes do Valorant**\n\nAdicione no seu arsenal os agentes que você sabe jogar. Isso será usado nos sorteios e montagem de squads!\n\nSelecione abaixo:');
+
+      const selectAM = new StringSelectMenuBuilder().setCustomId('select_agents_am').setPlaceholder('Adicionar agentes — A até M').setMinValues(1).setMaxValues(AGENTS_AM.length);
+      AGENTS_AM.forEach(a => selectAM.addOptions({ label: a, value: a, emoji: AGENT_EMOJIS[a]||'🎯' }));
+
+      const selectNY = new StringSelectMenuBuilder().setCustomId('select_agents_ny').setPlaceholder('Adicionar agentes — N até Y').setMinValues(1).setMaxValues(AGENTS_NY.length);
+      AGENTS_NY.forEach(a => selectNY.addOptions({ label: a, value: a, emoji: AGENT_EMOJIS[a]||'🎯' }));
+
+      const btnAll = new ButtonBuilder().setCustomId('btn_agents_all').setLabel('Tenho todos').setEmoji('✅').setStyle(ButtonStyle.Success);
+      const btnView = new ButtonBuilder().setCustomId('btn_agents_view').setLabel('Ver meu cadastro').setEmoji('📋').setStyle(ButtonStyle.Primary);
+      const btnReset = new ButtonBuilder().setCustomId('btn_agents_reset').setLabel('Resetar').setEmoji('🧹').setStyle(ButtonStyle.Danger);
+
+      const row1 = new ActionRowBuilder().addComponents(selectAM);
+      const row2 = new ActionRowBuilder().addComponents(selectNY);
+      const row3 = new ActionRowBuilder().addComponents(btnAll, btnView, btnReset);
+
+      await message.channel.send({ embeds: [embed], components: [row1, row2, row3] });
+    } catch (e) {}
+    return;
+  }
+
   if (content === 'sortear agente' || content === '/sortear-agente' || content.includes('sortear agente') || content.startsWith('sortear')) {
     const userId = message.author.id;
     const userAgentsSet = userAgentsMap.get(userId);
@@ -421,6 +448,43 @@ client.on('interactionCreate', async (interaction) => {
           .setFooter({ text: 'Killjoy Control // Identificação de Agentes' })
           .setTimestamp();
         return await interaction.reply({ embeds: [profileEmbed], ephemeral: true });
+      }
+
+      // AGENTS ARSENAL BUTTONS
+      if (customId === 'btn_agents_all') {
+        const set = new Set(ALL_VALORANT_AGENTS);
+        userAgentsMap.set(interaction.user.id, set);
+        saveAgentsDB(userAgentsMap);
+        return await interaction.reply({ content: '✅ Você adicionou **TODOS** os 24 agentes ao seu arsenal!', ephemeral: true });
+      }
+      if (customId === 'btn_agents_reset') {
+        userAgentsMap.set(interaction.user.id, new Set());
+        saveAgentsDB(userAgentsMap);
+        return await interaction.reply({ content: '🧹 Seu arsenal foi **RESETADO** (0 agentes).', ephemeral: true });
+      }
+      if (customId === 'btn_agents_view') {
+        const set = userAgentsMap.get(interaction.user.id);
+        if (!set || set.size === 0) return await interaction.reply({ content: '⚠️ Seu arsenal está vazio. Você não cadastrou nenhum agente.', ephemeral: true });
+        
+        const list = Array.from(set).map(a => `${AGENT_EMOJIS[a]||''} ${a}`).join(', ');
+        const embed = new EmbedBuilder()
+          .setColor(0xFFE600)
+          .setTitle('🔫 Seu Arsenal Atual')
+          .setDescription(`Você possui **${set.size}** agentes cadastrados no sistema da Killjoy:\n\n${list}`);
+        return await interaction.reply({ embeds: [embed], ephemeral: true });
+      }
+    }
+
+    if (interaction.isStringSelectMenu()) {
+      if (interaction.customId === 'select_agents_am' || interaction.customId === 'select_agents_ny') {
+        const selected = interaction.values;
+        if (!userAgentsMap.has(interaction.user.id)) userAgentsMap.set(interaction.user.id, new Set());
+        const set = userAgentsMap.get(interaction.user.id);
+        
+        selected.forEach(a => set.add(a));
+        saveAgentsDB(userAgentsMap);
+        
+        return await interaction.reply({ content: `✅ Agentes atualizados com sucesso no seu Arsenal! Agora você tem **${set.size}** agentes cadastrados.`, ephemeral: true });
       }
     }
 
