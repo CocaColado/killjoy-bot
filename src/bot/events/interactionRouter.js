@@ -37,7 +37,7 @@ export default async function handleInteraction(interaction) {
 
     // MESSAGE COMPONENT HANDLER
     if (interaction.isMessageComponent()) {
-      if (customId === 'sel_agents_am' || customId === 'sel_agents_ny') {
+      if (['agents_am', 'agents_ny', 'agent_select_am', 'agent_select_ny', 'arsenal_am', 'arsenal_ny', 'sel_agents_am', 'sel_agents_ny'].includes(customId)) {
         const userId = interaction.user.id;
         if (!store.userAgentsMap.has(userId)) store.userAgentsMap.set(userId, new Set());
         const userSet = store.userAgentsMap.get(userId);
@@ -46,19 +46,19 @@ export default async function handleInteraction(interaction) {
         return await interaction.reply({ content: `✅ Agentes adicionados ao seu arsenal: **${interaction.values.join(', ')}**`, ephemeral: true });
       }
 
-      if (customId === 'btn_agents_all') {
+      if (['agents_all', 'agent_all', 'arsenal_all', 'btn_agents_all', 'btn_all_agents'].includes(customId)) {
         store.userAgentsMap.set(interaction.user.id, new Set(ALL_VALORANT_AGENTS));
         saveAgentsDB();
         return await interaction.reply({ content: '✅ Você adicionou **TODOS** os agentes ao seu arsenal!', ephemeral: true });
       }
 
-      if (customId === 'btn_agents_clear') {
+      if (['agents_reset', 'agent_reset', 'arsenal_reset', 'btn_agents_reset', 'btn_reset_agents', 'btn_agents_clear'].includes(customId)) {
         store.userAgentsMap.delete(interaction.user.id);
         saveAgentsDB();
         return await interaction.reply({ content: '🧹 Seu arsenal de agentes foi resetado.', ephemeral: true });
       }
 
-      if (customId === 'btn_agents_view') {
+      if (['agents_view', 'agent_view', 'arsenal_view', 'btn_agents_view', 'btn_view_agents'].includes(customId)) {
         const userSet = store.userAgentsMap.get(interaction.user.id);
         if (!userSet || userSet.size === 0) {
           return await interaction.reply({ content: 'Você não tem nenhum agente cadastrado ainda.', ephemeral: true });
@@ -102,7 +102,13 @@ export default async function handleInteraction(interaction) {
         return await interaction.reply({ embeds: [profileEmbed], ephemeral: true });
       }
 
-      await interaction.reply({ content: '⚠️ Este botão ou menu expirou ou não está mais ativo.', ephemeral: true }).catch(() => {});
+      console.warn(`[InteractionRouter] CustomId não reconhecido: ${customId}`);
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({ 
+          content: `⚠️ Este componente não está registrado na versão atual do bot.\nID recebido: \`${customId}\``, 
+          ephemeral: true 
+        }).catch(() => {});
+      }
       return;
     }
 
