@@ -1,6 +1,4 @@
 node_modules/
-data/
-dist/
 .env
+data/
 *.log
-server.backup-before-codex-bot-cleanup.js
