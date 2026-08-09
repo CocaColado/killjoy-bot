@@ -37,9 +37,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const PORT = process.env.PORT || 3000;
-const TOKEN = process.env.DISCORD_TOKEN;
-const GUILD_ID = process.env.GUILD_ID || '1515187485531967629';
-const CLIENT_ID = process.env.CLIENT_ID || '1531112285219586088';
+const TOKEN = (process.env.DISCORD_TOKEN || '').trim();
+const GUILD_ID = (process.env.GUILD_ID || '1515187485531967629').trim();
+const CLIENT_ID = (process.env.CLIENT_ID || '1531112285219586088').trim();
 const TEMP_AUDIO_PATH = path.join(__dirname, 'temp_audio.mp3');
 
 const KILLJOY_YELLOW = 0xffed00;
@@ -81,6 +81,7 @@ const client = new Client({
 
 let botReady = false;
 let botInitialized = false;
+let loginWatchdog = null;
 let defconLevel = 0;
 let currentVoiceChannelId = null;
 let currentVoiceChannelName = null;
@@ -550,6 +551,7 @@ async function handleClientReady() {
   if (botInitialized) return;
   botInitialized = true;
   botReady = true;
+  if (loginWatchdog) clearTimeout(loginWatchdog);
   console.log(`[Killjoy] Online como ${client.user.tag}`);
   try {
     await registerSlashCommands();
@@ -772,7 +774,17 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 });
 
 if (TOKEN) {
-  client.login(TOKEN).catch(err => {
+  console.log('[Killjoy] Iniciando conexão com o Discord...');
+  loginWatchdog = setTimeout(() => {
+    if (!client.isReady()) {
+      console.warn('[Killjoy] Discord ainda não respondeu ao login após 20s. Verifique gateway/intents/token se continuar assim.');
+    }
+  }, 20_000);
+
+  client.login(TOKEN).then(() => {
+    console.log('[Killjoy] Token aceito pelo Discord. Aguardando evento de prontidão...');
+  }).catch(err => {
+    clearTimeout(loginWatchdog);
     console.error('[Killjoy] Erro ao conectar no Discord:', err.message);
   });
 } else {
