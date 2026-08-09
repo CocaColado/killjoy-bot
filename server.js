@@ -40,6 +40,7 @@ const PORT = process.env.PORT || 3000;
 const TOKEN = (process.env.DISCORD_TOKEN || '').trim();
 const GUILD_ID = (process.env.GUILD_ID || '1515187485531967629').trim();
 const CLIENT_ID = (process.env.CLIENT_ID || '1531112285219586088').trim();
+const PUBLIC_URL = (process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || '').trim();
 const TEMP_AUDIO_PATH = path.join(__dirname, 'temp_audio.mp3');
 
 const KILLJOY_YELLOW = 0xffed00;
@@ -1308,4 +1309,14 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`[Killjoy Control Center Master] Painel rodando em http://localhost:${PORT}`);
+  if (PUBLIC_URL) {
+    setInterval(async () => {
+      try {
+        await fetch(`${PUBLIC_URL.replace(/\/$/, '')}/health`);
+        console.log('[Killjoy] Keep-alive Render OK.');
+      } catch (err) {
+        console.warn('[Killjoy] Keep-alive Render falhou:', err.message);
+      }
+    }, 4 * 60 * 1000);
+  }
 });
