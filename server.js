@@ -1,10 +1,8 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
-import dns from 'node:dns';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { Agent as UndiciAgent, setGlobalDispatcher } from 'undici';
 import { 
   Client, 
   GatewayIntentBits, 
@@ -37,13 +35,6 @@ import { readJson, writeJsonAtomic } from './src/storage.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-dns.setDefaultResultOrder('ipv4first');
-setGlobalDispatcher(new UndiciAgent({
-  connect: {
-    family: 4,
-    timeout: 15_000
-  }
-}));
 
 const PORT = process.env.PORT || 3000;
 const TOKEN = (process.env.DISCORD_TOKEN || '').trim();
@@ -91,7 +82,6 @@ const client = new Client({
 let botReady = false;
 let botInitialized = false;
 let loginWatchdog = null;
-let discordLoginAttempts = 0;
 let defconLevel = 0;
 let currentVoiceChannelId = null;
 let currentVoiceChannelName = null;
@@ -577,6 +567,26 @@ async function handleClientReady() {
 client.once('ready', handleClientReady);
 client.once('clientReady', handleClientReady);
 
+client.on('shardReady', id => {
+  botReady = true;
+  console.log(`[Killjoy] Shard ${id} pronto.`);
+});
+
+client.on('shardDisconnect', (event, id) => {
+  botReady = false;
+  console.warn(`[Killjoy] Shard ${id} desconectou do Discord: ${event?.code || 'sem código'}`);
+});
+
+client.on('shardReconnecting', id => {
+  botReady = false;
+  console.warn(`[Killjoy] Shard ${id} reconectando ao Discord...`);
+});
+
+client.on('shardResume', (id, replayedEvents) => {
+  botReady = true;
+  console.log(`[Killjoy] Shard ${id} retomado (${replayedEvents} evento(s) reaplicado(s)).`);
+});
+
 client.on('interactionCreate', async interaction => {
   try {
   if (await handleRegistrationInteraction(interaction)) return;
@@ -789,19 +799,7 @@ async function startDiscordLogin() {
     return;
   }
 
-  discordLoginAttempts += 1;
   console.log('[Killjoy] Iniciando conexão com o Discord...');
-
-  Promise.race([
-    new REST({ version: '10' }).setToken(TOKEN).get(Routes.oauth2CurrentApplication()),
-    wait(15_000).then(() => {
-      throw new Error('timeout ao validar token');
-    })
-  ]).then(app => {
-    console.log(`[Killjoy] Token validado para aplicação ${app.id}.`);
-  }).catch(err => {
-    console.error('[Killjoy] Token recusado pela API do Discord:', err.message);
-  });
 
   if (loginWatchdog) clearTimeout(loginWatchdog);
   loginWatchdog = setTimeout(() => {
@@ -899,6 +897,15 @@ function playAudioInVoice(audioPathOrUrl, volume = 0.8, meta = {}) {
 }
 
 const server = http.createServer(async (req, res) => {
+  if (req.method === 'GET' && req.url === '/health') {
+    return sendJson(res, 200, {
+      ok: true,
+      botReady: client.isReady(),
+      botStatus: client.isReady() ? 'online' : 'connecting',
+      uptime: Math.floor(process.uptime())
+    });
+  }
+
   if (req.method === 'GET' && (req.url === '/' || req.url === '/index.html')) {
     const htmlPath = path.join(__dirname, 'index.html');
     if (fs.existsSync(htmlPath)) {
