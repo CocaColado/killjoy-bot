@@ -907,6 +907,29 @@ const server = http.createServer(async (req, res) => {
     });
   }
 
+  if (req.method === 'GET' && req.url === '/debug/discord-network') {
+    const startedAt = Date.now();
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 10_000);
+      const response = await fetch('https://discord.com/api/v10/gateway', { signal: controller.signal });
+      clearTimeout(timer);
+      const text = await response.text();
+      return sendJson(res, 200, {
+        ok: response.ok,
+        status: response.status,
+        ms: Date.now() - startedAt,
+        body: text.slice(0, 200)
+      });
+    } catch (err) {
+      return sendJson(res, 200, {
+        ok: false,
+        ms: Date.now() - startedAt,
+        error: err.message
+      });
+    }
+  }
+
   if (req.method === 'GET' && (req.url === '/' || req.url === '/index.html')) {
     const htmlPath = path.join(__dirname, 'index.html');
     if (fs.existsSync(htmlPath)) {
