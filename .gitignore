@@ -4,5 +4,8 @@ dist/
 *.log
 server.backup-before-codex-bot-cleanup.js
 data/
+!data/
+data/*
+!data/ktos-config.json
 control-center/
 temp_audio.mp3

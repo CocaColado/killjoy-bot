@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "studio": {
+    "enabled": true,
+    "lastUpdatedAt": null
+  },
+  "presence": {
+    "lines": [
+      "calibrando os Patifes",
+      "protegendo o servidor",
+      "vigiando o lobby da ranked",
+      "organizando o caos com carinho"
+    ]
+  },
+  "channels": {
+    "registro": "registro",
+    "agentes": "agentes",
+    "suporte": "suporte"
+  },
+  "topics": {
+    "registro": "Registro dos Patifes pela Killjoy.",
+    "agentes": "Cadastro e roleta de agentes da Killjoy.",
+    "suporte": "Suporte e tickets da Killjoy."
+  },
+  "supportPanel": {
+    "title": "SUPORTE // KILLJOY",
+    "description": "Precisa de ajuda, denúncia, parceria ou resolver alguma coisa com a equipe? Abra um ticket e explique com calma.",
+    "howItWorks": "A Killjoy cria um canal privado para você e a equipe.",
+    "tip": "Se tiver print, link ou contexto, manda tudo no ticket.",
+    "buttonLabel": "Abrir ticket",
+    "footer": "Killjoy dos Patifes • suporte sem bagunça"
+  },
+  "agentsPanel": {
+    "title": "ROLETA DE AGENTES // KILLJOY",
+    "description": "Escolha nos menus abaixo os agentes que você tem. A Killjoy salva sua lista e usa isso quando você mandar `/sortear-agente`.\n\n**Como usar**\n1. Selecione seus agentes nos menus.\n2. Use **Meu cadastro** para conferir.\n3. Quando for jogar, mande `/sortear-agente`.\n\nO painel não sorteia. Ele só guarda seu arsenal.",
+    "footer": "Cadastro salvo por pessoa • roleta limpa",
+    "selectOne": "Escolha seus agentes — parte 1",
+    "selectTwo": "Escolha seus agentes — parte 2",
+    "allButton": "Tenho todos",
+    "listButton": "Meu cadastro",
+    "resetButton": "Limpar minha lista"
+  }
+}

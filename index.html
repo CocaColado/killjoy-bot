@@ -989,6 +989,27 @@ body.edit-mode .card-edit-overlay {
   </section>
 
   <!-- TAB 6: CANAIS, FERRAMENTAS & SEGURANÇA DEFCON (UNIFIED TAB 6) -->
+  <section class="view" id="v-studio" style="overflow-y:auto">
+    <div class="box glow" style="padding:24px">
+      <h2 style="color:var(--yellow);margin-bottom:8px">KTOS STUDIO // CONTROLE AO VIVO</h2>
+      <p class="muted" style="margin-bottom:20px">Edite o comportamento da Killjoy sem mexer no codigo. Salvar troca a configuracao; Aplicar atualiza os paineis no Discord.</p>
+      <div class="box" style="padding:16px;margin-bottom:16px">
+        <label>CHAVE PRIVADA DO STUDIO</label>
+        <input id="studioKeyInput" type="password" placeholder="Cole a chave privada aqui" autocomplete="off">
+      </div>
+      <div class="grid2">
+        <div class="box" style="padding:16px"><h3>PRESENCA DA KILLJOY</h3><label>UMA FRASE POR LINHA</label><textarea id="studioPresenceLines" rows="6"></textarea></div>
+        <div class="box" style="padding:16px"><h3>CANAIS PRINCIPAIS</h3><label>REGISTRO</label><input id="studioChRegistro"><label>AGENTES</label><input id="studioChAgentes"><label>SUPORTE</label><input id="studioChSuporte"></div>
+      </div>
+      <div class="grid2" style="margin-top:16px">
+        <div class="box" style="padding:16px"><h3>PAINEL DE SUPORTE</h3><label>TITULO</label><input id="studioSupportTitle"><label>DESCRICAO</label><textarea id="studioSupportDescription" rows="4"></textarea><label>COMO FUNCIONA</label><input id="studioSupportHow"><label>DICA</label><input id="studioSupportTip"><label>TEXTO DO BOTAO</label><input id="studioSupportButton"><label>RODAPE</label><input id="studioSupportFooter"></div>
+        <div class="box" style="padding:16px"><h3>PAINEL DE AGENTES</h3><label>TITULO</label><input id="studioAgentsTitle"><label>DESCRICAO</label><textarea id="studioAgentsDescription" rows="5"></textarea><label>RODAPE</label><input id="studioAgentsFooter"><label>MENU 1</label><input id="studioAgentsSelectOne"><label>MENU 2</label><input id="studioAgentsSelectTwo"></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px"><button class="primary" onclick="loadStudioConfig(true)">CARREGAR</button><button class="primary" onclick="saveStudioConfig()">SALVAR AO VIVO</button><button onclick="applyStudioPanels()">APLICAR NOS PAINEIS</button></div>
+      <p id="studioStatus" class="muted" style="margin-top:12px">Studio aguardando.</p>
+    </div>
+  </section>
+
   <section class="view" id="v-tools">
     <div style="display:flex; flex-direction:column; gap:14px; flex:1; min-height:0">
       
@@ -1409,6 +1430,7 @@ function toggleUISounds(enabled) {
 
 /* ============ TABS & NAVIGATION (UNIFIED 6 TABS BLUEPRINT) ============ */
 const TABS=[
+  ['studio',`<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6l1 4 4 2v6l-4 2-1 4H9l-1-4-4-2V9l4-2 1-4Z"/><circle cx="12" cy="12" r="3"/></svg>`,'KTOS Studio'],
   ['overview',`<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>`,'Visão Geral'],
   ['voice',`<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>`,'Voz & TempChannels'],
   ['soundboard',`<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`,'Painel de Som'],
@@ -1421,7 +1443,7 @@ const nav=document.getElementById('nav');
 TABS.forEach(([id,ic,label],i)=>{
   const b=document.createElement('button');
   b.innerHTML=`<span style="display:flex; align-items:center">${ic}</span><span class="nav-label">${label}</span>`;
-  if(i===0)b.classList.add('on');
+  if(id==='overview')b.classList.add('on');
   b.onclick=()=>{
     playUISound('whoosh');
     document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));
@@ -1429,6 +1451,7 @@ TABS.forEach(([id,ic,label],i)=>{
     document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
     document.getElementById('v-'+id).classList.add('on');
     document.getElementById('vTitle').innerHTML=ic+' <span>'+label+'</span>';
+    if(id==='studio') loadStudioConfig(false);
   };
   nav.appendChild(b);
 });
@@ -1496,6 +1519,82 @@ async function api(path,body={},label,options={}){
     if(!silent) showToast(`Erro de conexão com a API`, 'error');
     return{success:false,error:e.message};
   }
+}
+
+let STUDIO_CONFIG=null;
+let studioLoaded=false;
+
+function studioHeaders(){
+  const key=(document.getElementById('studioKeyInput')?.value||localStorage.getItem('ktos_studio_key')||'').trim();
+  if(key)localStorage.setItem('ktos_studio_key',key);
+  return {'Content-Type':'application/json',...(key?{'x-ktos-studio-key':key}:{})};
+}
+
+function studioValue(id,value){
+  const element=document.getElementById(id);
+  if(element)element.value=value||'';
+}
+
+function setStudioStatus(message,error=false){
+  const status=document.getElementById('studioStatus');
+  if(status){status.textContent=message;status.style.color=error?'var(--red)':'var(--cyan)';}
+  showToast(message,error?'error':'success');
+}
+
+async function loadStudioConfig(force=false){
+  if(studioLoaded&&!force)return;
+  const key=document.getElementById('studioKeyInput');
+  if(key&&!key.value)key.value=localStorage.getItem('ktos_studio_key')||'';
+  try{
+    const response=await fetch('/api/studio/config',{headers:studioHeaders()});
+    const result=await response.json();
+    if(!result.success)throw new Error(result.error||'Nao consegui abrir o Studio.');
+    STUDIO_CONFIG=result.config;studioLoaded=true;
+    studioValue('studioPresenceLines',(STUDIO_CONFIG.presence?.lines||[]).join('\n'));
+    studioValue('studioChRegistro',STUDIO_CONFIG.channels?.registro);
+    studioValue('studioChAgentes',STUDIO_CONFIG.channels?.agentes);
+    studioValue('studioChSuporte',STUDIO_CONFIG.channels?.suporte);
+    studioValue('studioSupportTitle',STUDIO_CONFIG.supportPanel?.title);
+    studioValue('studioSupportDescription',STUDIO_CONFIG.supportPanel?.description);
+    studioValue('studioSupportHow',STUDIO_CONFIG.supportPanel?.howItWorks);
+    studioValue('studioSupportTip',STUDIO_CONFIG.supportPanel?.tip);
+    studioValue('studioSupportButton',STUDIO_CONFIG.supportPanel?.buttonLabel);
+    studioValue('studioSupportFooter',STUDIO_CONFIG.supportPanel?.footer);
+    studioValue('studioAgentsTitle',STUDIO_CONFIG.agentsPanel?.title);
+    studioValue('studioAgentsDescription',STUDIO_CONFIG.agentsPanel?.description);
+    studioValue('studioAgentsFooter',STUDIO_CONFIG.agentsPanel?.footer);
+    studioValue('studioAgentsSelectOne',STUDIO_CONFIG.agentsPanel?.selectOne);
+    studioValue('studioAgentsSelectTwo',STUDIO_CONFIG.agentsPanel?.selectTwo);
+    setStudioStatus(result.protected?'Studio privado carregado.':'Studio carregado. Configure KTOS_STUDIO_KEY no Render para deixa-lo privado.');
+  }catch(error){setStudioStatus(error.message,true);}
+}
+
+function collectStudioConfig(){
+  const get=id=>(document.getElementById(id)?.value||'').trim();
+  const lines=get('studioPresenceLines').split('\n').map(line=>line.trim()).filter(Boolean);
+  return {...STUDIO_CONFIG,
+    presence:{...(STUDIO_CONFIG?.presence||{}),lines},
+    channels:{...(STUDIO_CONFIG?.channels||{}),registro:get('studioChRegistro'),agentes:get('studioChAgentes'),suporte:get('studioChSuporte')},
+    supportPanel:{...(STUDIO_CONFIG?.supportPanel||{}),title:get('studioSupportTitle'),description:get('studioSupportDescription'),howItWorks:get('studioSupportHow'),tip:get('studioSupportTip'),buttonLabel:get('studioSupportButton'),footer:get('studioSupportFooter')},
+    agentsPanel:{...(STUDIO_CONFIG?.agentsPanel||{}),title:get('studioAgentsTitle'),description:get('studioAgentsDescription'),footer:get('studioAgentsFooter'),selectOne:get('studioAgentsSelectOne'),selectTwo:get('studioAgentsSelectTwo')}
+  };
+}
+
+async function studioPost(path,body){
+  const response=await fetch(path,{method:'POST',headers:studioHeaders(),body:JSON.stringify(body)});
+  const result=await response.json();
+  if(!result.success)throw new Error(result.error||'A acao falhou.');
+  return result;
+}
+
+async function saveStudioConfig(){
+  try{const result=await studioPost('/api/studio/config',{config:collectStudioConfig()});STUDIO_CONFIG=result.config;setStudioStatus('Configuracao salva. Mudancas leves ja estao vivas.');}
+  catch(error){setStudioStatus(error.message,true);throw error;}
+}
+
+async function applyStudioPanels(){
+  try{await saveStudioConfig();await studioPost('/api/studio/apply-panels',{});setStudioStatus('Paineis do Discord atualizados sem reiniciar a Killjoy.');}
+  catch(error){setStudioStatus(error.message,true);}
 }
 
 async function loadData(manual){

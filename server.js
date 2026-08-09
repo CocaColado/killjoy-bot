@@ -41,7 +41,9 @@ const TOKEN = (process.env.DISCORD_TOKEN || '').trim();
 const GUILD_ID = (process.env.GUILD_ID || '1515187485531967629').trim();
 const CLIENT_ID = (process.env.CLIENT_ID || '1531112285219586088').trim();
 const PUBLIC_URL = (process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || '').trim();
+const KTOS_STUDIO_KEY = (process.env.KTOS_STUDIO_KEY || '').trim();
 const TEMP_AUDIO_PATH = path.join(__dirname, 'temp_audio.mp3');
+const KTOS_CONFIG_PATH = path.join(__dirname, 'data', 'ktos-config.json');
 
 const KILLJOY_YELLOW = 0xffed00;
 const VALORANT_AGENTS = [
@@ -71,6 +73,68 @@ const CHANNEL_NAMES = {
   agentes: '🎯・agentes',
   suporte: '🎫・suporte'
 };
+
+const DEFAULT_KTOS_CONFIG = {
+  version: 1,
+  studio: { enabled: true, lastUpdatedAt: null },
+  presence: { lines: killjoyLines },
+  channels: CHANNEL_NAMES,
+  topics: {
+    registro: 'Registro dos Patifes pela Killjoy.',
+    agentes: 'Cadastro e roleta de agentes da Killjoy.',
+    suporte: 'Suporte e tickets da Killjoy.'
+  },
+  supportPanel: {
+    title: 'SUPORTE // KILLJOY',
+    description: 'Precisa de ajuda, denuncia, parceria ou resolver alguma coisa com a equipe? Abra um ticket e explique com calma.',
+    howItWorks: 'A Killjoy cria um canal privado para voce e a equipe.',
+    tip: 'Se tiver print, link ou contexto, manda tudo no ticket.',
+    buttonLabel: 'Abrir ticket',
+    footer: 'Killjoy dos Patifes - suporte sem bagunca'
+  },
+  agentsPanel: {
+    title: 'ROLETA DE AGENTES // KILLJOY',
+    description: 'Escolha nos menus abaixo os agentes que voce tem. A Killjoy salva sua lista e usa isso quando voce mandar `/sortear-agente`.',
+    footer: 'Cadastro salvo por pessoa - roleta limpa',
+    selectOne: 'Escolha seus agentes - parte 1',
+    selectTwo: 'Escolha seus agentes - parte 2',
+    allButton: 'Tenho todos',
+    listButton: 'Meu cadastro',
+    resetButton: 'Limpar minha lista'
+  }
+};
+
+let ktosConfigCache = structuredClone(DEFAULT_KTOS_CONFIG);
+
+function mergeKTOSConfig(value = {}) {
+  return {
+    ...DEFAULT_KTOS_CONFIG,
+    ...value,
+    studio: { ...DEFAULT_KTOS_CONFIG.studio, ...(value.studio || {}) },
+    presence: { ...DEFAULT_KTOS_CONFIG.presence, ...(value.presence || {}) },
+    channels: { ...DEFAULT_KTOS_CONFIG.channels, ...(value.channels || {}) },
+    topics: { ...DEFAULT_KTOS_CONFIG.topics, ...(value.topics || {}) },
+    supportPanel: { ...DEFAULT_KTOS_CONFIG.supportPanel, ...(value.supportPanel || {}) },
+    agentsPanel: { ...DEFAULT_KTOS_CONFIG.agentsPanel, ...(value.agentsPanel || {}) }
+  };
+}
+
+async function readKTOSConfig() {
+  ktosConfigCache = mergeKTOSConfig(await readJson(KTOS_CONFIG_PATH, DEFAULT_KTOS_CONFIG));
+  return ktosConfigCache;
+}
+
+async function saveKTOSConfig(value) {
+  const next = mergeKTOSConfig(value);
+  next.studio.lastUpdatedAt = new Date().toISOString();
+  await writeJsonAtomic(KTOS_CONFIG_PATH, next);
+  ktosConfigCache = next;
+  return next;
+}
+
+function studioAccessAllowed(req) {
+  return !KTOS_STUDIO_KEY || req.headers['x-ktos-studio-key'] === KTOS_STUDIO_KEY;
+}
 
 const client = new Client({
   intents: [
@@ -238,7 +302,7 @@ async function getAgentVisual(agentName) {
   }
 }
 
-function supportPanel() {
+function supportPanelLegacy() {
   return {
     embeds: [
       new EmbedBuilder()
@@ -264,7 +328,7 @@ function supportPanel() {
   };
 }
 
-function agentsPanel() {
+function agentsPanelLegacy() {
   const selects = AGENT_GROUPS.map((agents, index) => new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId(`agents:select:${index}`)
@@ -300,6 +364,62 @@ function agentsPanel() {
           'O painel não sorteia. Ele só guarda seu arsenal.'
         ].join('\n'))
         .setFooter({ text: 'Cadastro salvo por pessoa • roleta limpa 💛' })
+        .setTimestamp()
+    ],
+    components: [...selects, controls]
+  };
+}
+
+function supportPanel(config = ktosConfigCache) {
+  const panel = config.supportPanel;
+  return {
+    embeds: [
+      new EmbedBuilder()
+        .setColor(KILLJOY_YELLOW)
+        .setTitle(panel.title)
+        .setDescription(panel.description)
+        .addFields(
+          { name: 'Como funciona', value: panel.howItWorks },
+          { name: 'Dica', value: panel.tip }
+        )
+        .setFooter({ text: panel.footer })
+        .setTimestamp()
+    ],
+    components: [
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('support:open')
+          .setLabel(panel.buttonLabel)
+          .setStyle(ButtonStyle.Primary)
+      )
+    ]
+  };
+}
+
+function agentsPanel(config = ktosConfigCache) {
+  const panel = config.agentsPanel;
+  const selects = AGENT_GROUPS.map((agents, index) => new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId(`agents:select:${index}`)
+      .setPlaceholder(index === 0 ? panel.selectOne : panel.selectTwo)
+      .setMinValues(1)
+      .setMaxValues(agents.length)
+      .addOptions(agents.map(agent => ({ label: agent, value: agent })))
+  ));
+
+  const controls = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('agents:all').setLabel(panel.allButton).setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId('agents:list').setLabel(panel.listButton).setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId('agents:reset').setLabel(panel.resetButton).setStyle(ButtonStyle.Danger)
+  );
+
+  return {
+    embeds: [
+      new EmbedBuilder()
+        .setColor(KILLJOY_YELLOW)
+        .setTitle(panel.title)
+        .setDescription(panel.description)
+        .setFooter({ text: panel.footer })
         .setTimestamp()
     ],
     components: [...selects, controls]
@@ -350,14 +470,15 @@ async function upsertBotPanel(channel, marker, payload) {
 
 async function setupCoreDiscordChannels() {
   try {
+    const config = await readKTOSConfig();
     const guild = await client.guilds.fetch(GUILD_ID);
-    const registro = await ensureTextChannel(guild, CHANNEL_NAMES.registro, 'Registro dos Patifes pela Killjoy.');
-    const agentes = await ensureTextChannel(guild, CHANNEL_NAMES.agentes, 'Cadastro e roleta de agentes da Killjoy.');
-    const suporte = await ensureTextChannel(guild, CHANNEL_NAMES.suporte, 'Suporte e tickets da Killjoy.');
+    const registro = await ensureTextChannel(guild, config.channels.registro, config.topics.registro);
+    const agentes = await ensureTextChannel(guild, config.channels.agentes, config.topics.agentes);
+    const suporte = await ensureTextChannel(guild, config.channels.suporte, config.topics.suporte);
 
     await upsertBotPanel(registro, 'painel:registro', registrationPanel());
-    await upsertBotPanel(agentes, 'painel:agentes', agentsPanel());
-    await upsertBotPanel(suporte, 'painel:suporte', supportPanel());
+    await upsertBotPanel(agentes, 'painel:agentes', agentsPanel(config));
+    await upsertBotPanel(suporte, 'painel:suporte', supportPanel(config));
 
     console.log('[Killjoy] Canais principais conferidos: registro, agentes e suporte.');
   } catch (err) {
@@ -780,7 +901,10 @@ client.on('interactionCreate', async interaction => {
 
 function rotatePresence() {
   if (!client.user) return;
-  const text = killjoyLines[Math.floor(Math.random() * killjoyLines.length)];
+  const lines = Array.isArray(ktosConfigCache.presence?.lines) && ktosConfigCache.presence.lines.length
+    ? ktosConfigCache.presence.lines
+    : killjoyLines;
+  const text = lines[Math.floor(Math.random() * lines.length)];
   client.user.setPresence({
     status: 'online',
     activities: [{ name: text, type: ActivityType.Playing }]
@@ -939,6 +1063,14 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  if (req.method === 'GET' && req.url === '/api/studio/config') {
+    if (!studioAccessAllowed(req)) {
+      return sendJson(res, 401, { success: false, error: 'Chave do KTOS Studio incorreta.' });
+    }
+    const config = await readKTOSConfig();
+    return sendJson(res, 200, { success: true, protected: !!KTOS_STUDIO_KEY, config });
+  }
+
   if (req.method === 'GET' && req.url === '/api/data') {
     if (!botReady && client.isReady()) {
       botReady = true;
@@ -1011,6 +1143,29 @@ const server = http.createServer(async (req, res) => {
     req.on('data', chunk => { body += chunk; });
     req.on('end', async () => {
       const data = JSON.parse(body || '{}');
+
+      if (req.url.startsWith('/api/studio/')) {
+        if (!studioAccessAllowed(req)) {
+          return sendJson(res, 401, { success: false, error: 'Chave do KTOS Studio incorreta.' });
+        }
+
+        try {
+          if (req.url === '/api/studio/config') {
+            const config = await saveKTOSConfig(data.config || {});
+            rotatePresence();
+            return sendJson(res, 200, { success: true, config, message: 'Configuracao salva e carregada ao vivo.' });
+          }
+
+          if (req.url === '/api/studio/apply-panels') {
+            if (!client.isReady()) throw new Error('A Killjoy precisa estar online no Discord para atualizar os paineis.');
+            await setupCoreDiscordChannels();
+            rotatePresence();
+            return sendJson(res, 200, { success: true, message: 'Paineis e presenca atualizados ao vivo.' });
+          }
+        } catch (err) {
+          return sendJson(res, 400, { success: false, error: err.message });
+        }
+      }
 
       if (req.url === '/api/upload-and-play') {
         try {
