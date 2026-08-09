@@ -82,6 +82,7 @@ const client = new Client({
 let botReady = false;
 let botInitialized = false;
 let loginWatchdog = null;
+let discordLoginAttempts = 0;
 let defconLevel = 0;
 let currentVoiceChannelId = null;
 let currentVoiceChannelName = null;
@@ -773,11 +774,30 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
   }
 });
 
-if (TOKEN) {
+async function startDiscordLogin() {
+  if (!TOKEN) {
+    console.error('[Killjoy] DISCORD_TOKEN não foi definido. Configure essa variável no Render.');
+    return;
+  }
+
+  discordLoginAttempts += 1;
   console.log('[Killjoy] Iniciando conexão com o Discord...');
+  try {
+    const app = await new REST({ version: '10' }).setToken(TOKEN).get(Routes.oauth2CurrentApplication());
+    console.log(`[Killjoy] Token validado para aplicação ${app.id}.`);
+  } catch (err) {
+    console.error('[Killjoy] Token recusado pela API do Discord:', err.message);
+  }
+
+  if (loginWatchdog) clearTimeout(loginWatchdog);
   loginWatchdog = setTimeout(() => {
     if (!client.isReady()) {
       console.warn('[Killjoy] Discord ainda não respondeu ao login após 20s. Verifique gateway/intents/token se continuar assim.');
+      if (discordLoginAttempts < 4) {
+        console.warn('[Killjoy] Tentando reconectar ao gateway do Discord...');
+        try { client.destroy(); } catch (e) {}
+        startDiscordLogin();
+      }
     }
   }, 20_000);
 
@@ -787,9 +807,9 @@ if (TOKEN) {
     clearTimeout(loginWatchdog);
     console.error('[Killjoy] Erro ao conectar no Discord:', err.message);
   });
-} else {
-  console.error('[Killjoy] DISCORD_TOKEN não foi definido. Configure essa variável no Render.');
 }
+
+startDiscordLogin();
 
 async function ensureVoiceConnection(guild, channelId) {
   if (!activeConnection || currentVoiceChannelId !== channelId || activeConnection.state.status === VoiceConnectionStatus.Destroyed) {
