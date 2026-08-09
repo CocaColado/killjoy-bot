@@ -82,6 +82,7 @@ const client = new Client({
 });
 
 let botReady = false;
+let botInitialized = false;
 let defconLevel = 0;
 let currentVoiceChannelId = null;
 let currentVoiceChannelName = null;
@@ -535,7 +536,9 @@ async function cleanupOldAgentSelectorPanels() {
   }
 }
 
-client.on('ready', async () => {
+async function handleClientReady() {
+  if (botInitialized) return;
+  botInitialized = true;
   botReady = true;
   console.log(`[Killjoy] Online como ${client.user.tag}`);
   try {
@@ -547,7 +550,10 @@ client.on('ready', async () => {
   } catch (e) {
     console.error('[Killjoy] Erro ao inicializar:', e);
   }
-});
+}
+
+client.once('ready', handleClientReady);
+client.once('clientReady', handleClientReady);
 
 client.on('interactionCreate', async interaction => {
   try {
@@ -852,8 +858,17 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'GET' && req.url === '/api/data') {
-    if (!botReady) {
-      return sendJson(res, 200, { error: 'Bot ainda está conectando ao Discord...' });
+    if (!botReady && client.isReady()) {
+      botReady = true;
+    }
+
+    if (!client.isReady()) {
+      return sendJson(res, 200, {
+        error: 'Bot ainda está conectando ao Discord...',
+        botReady: false,
+        botStatus: 'connecting',
+        tokenConfigured: !!TOKEN
+      });
     }
 
     try {
