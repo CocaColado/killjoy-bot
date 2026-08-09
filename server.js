@@ -1,6 +1,7 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import dns from 'node:dns';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { 
@@ -35,6 +36,7 @@ import { readJson, writeJsonAtomic } from './src/storage.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+dns.setDefaultResultOrder('ipv4first');
 
 const PORT = process.env.PORT || 3000;
 const TOKEN = (process.env.DISCORD_TOKEN || '').trim();
@@ -782,12 +784,17 @@ async function startDiscordLogin() {
 
   discordLoginAttempts += 1;
   console.log('[Killjoy] Iniciando conexão com o Discord...');
-  try {
-    const app = await new REST({ version: '10' }).setToken(TOKEN).get(Routes.oauth2CurrentApplication());
+
+  Promise.race([
+    new REST({ version: '10' }).setToken(TOKEN).get(Routes.oauth2CurrentApplication()),
+    wait(8_000).then(() => {
+      throw new Error('timeout ao validar token');
+    })
+  ]).then(app => {
     console.log(`[Killjoy] Token validado para aplicação ${app.id}.`);
-  } catch (err) {
+  }).catch(err => {
     console.error('[Killjoy] Token recusado pela API do Discord:', err.message);
-  }
+  });
 
   if (loginWatchdog) clearTimeout(loginWatchdog);
   loginWatchdog = setTimeout(() => {
