@@ -806,14 +806,9 @@ async function startDiscordLogin() {
   if (loginWatchdog) clearTimeout(loginWatchdog);
   loginWatchdog = setTimeout(() => {
     if (!client.isReady()) {
-      console.warn('[Killjoy] Discord ainda não respondeu ao login após 20s. Verifique gateway/intents/token se continuar assim.');
-      if (discordLoginAttempts < 4) {
-        console.warn('[Killjoy] Tentando reconectar ao gateway do Discord...');
-        try { client.destroy(); } catch (e) {}
-        startDiscordLogin();
-      }
+      console.warn('[Killjoy] Discord ainda não respondeu ao login após 45s. Mantendo processo vivo sem reconectar em loop.');
     }
-  }, 20_000);
+  }, 45_000);
 
   client.login(TOKEN).then(() => {
     console.log('[Killjoy] Token aceito pelo Discord. Aguardando evento de prontidão...');
