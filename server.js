@@ -96,6 +96,7 @@ let activeConnection = null;
 let currentFfmpegProc = null;
 let currentAudioResource = null;
 let currentVolume = 0.8;
+let currentTrack = null;
 
 function sendJson(res, statusCode, payload) {
   res.writeHead(statusCode, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -124,6 +125,7 @@ audioPlayer.on(AudioPlayerStatus.Idle, () => {
     currentFfmpegProc = null;
   }
   currentAudioResource = null;
+  currentTrack = null;
 });
 
 audioPlayer.on('error', error => {
@@ -792,18 +794,27 @@ function stopAudioExecution() {
       currentFfmpegProc = null;
     }
     currentAudioResource = null;
+    currentTrack = null;
   } catch (e) {}
 }
 
-function playAudioInVoice(audioPathOrUrl, volume = 0.8) {
+function getPlaybackTime() {
+  if (!currentTrack) return 0;
+  if (currentTrack.isPaused) return currentTrack.pausedAtSeconds || 0;
+  const elapsed = (Date.now() - currentTrack.startedAt) / 1000;
+  return Math.max(0, Math.floor((currentTrack.seekSeconds || 0) + elapsed));
+}
+
+function playAudioInVoice(audioPathOrUrl, volume = 0.8, meta = {}) {
   stopAudioExecution();
   currentVolume = parseFloat(volume) || 0.8;
+  const seekSeconds = Math.max(0, Number(meta.seekSeconds || 0));
 
   console.log(`[Killjoy Voice Engine] Transmitindo MP3 via FFmpeg: ${audioPathOrUrl}`);
 
   const ffmpegArgs = audioPathOrUrl.startsWith('http')
-    ? ['-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5', '-i', audioPathOrUrl, '-f', 's16le', '-ar', '48000', '-ac', '2', 'pipe:1']
-    : ['-i', audioPathOrUrl, '-f', 's16le', '-ar', '48000', '-ac', '2', 'pipe:1'];
+    ? ['-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5', ...(seekSeconds ? ['-ss', String(seekSeconds)] : []), '-i', audioPathOrUrl, '-f', 's16le', '-ar', '48000', '-ac', '2', 'pipe:1']
+    : [...(seekSeconds ? ['-ss', String(seekSeconds)] : []), '-i', audioPathOrUrl, '-f', 's16le', '-ar', '48000', '-ac', '2', 'pipe:1'];
 
   const ffmpegProc = spawn(ffmpegPath, ffmpegArgs, { stdio: ['ignore', 'pipe', 'ignore'] });
   currentFfmpegProc = ffmpegProc;
@@ -818,6 +829,15 @@ function playAudioInVoice(audioPathOrUrl, volume = 0.8) {
   }
 
   currentAudioResource = resource;
+  currentTrack = {
+    source: audioPathOrUrl,
+    title: meta.title || (audioPathOrUrl.startsWith('http') ? 'URL externa' : 'Áudio local'),
+    duration: Number(meta.duration || 0),
+    startedAt: Date.now(),
+    seekSeconds,
+    isPaused: false,
+    pausedAtSeconds: 0
+  };
   audioPlayer.play(resource);
 }
 
@@ -871,6 +891,13 @@ const server = http.createServer(async (req, res) => {
         totalRoles: guild.roles.cache.size,
         currentVoiceChannelId,
         currentVoiceChannelName,
+        currentlyPlaying: currentTrack ? {
+          title: currentTrack.title,
+          duration: currentTrack.duration
+        } : null,
+        playbackTime: getPlaybackTime(),
+        playbackDuration: currentTrack?.duration || 0,
+        isPaused: !!currentTrack?.isPaused,
         roles,
         textChannels,
         voiceChannels,
@@ -890,7 +917,7 @@ const server = http.createServer(async (req, res) => {
 
       if (req.url === '/api/upload-and-play') {
         try {
-          const { channelId, base64Data, volume } = data;
+          const { channelId, base64Data, volume, title, duration } = data;
           const guild = await client.guilds.fetch(GUILD_ID);
           const targetChannelId = channelId || currentVoiceChannelId;
 
@@ -901,7 +928,7 @@ const server = http.createServer(async (req, res) => {
           fs.writeFileSync(TEMP_AUDIO_PATH, buffer);
 
           await ensureVoiceConnection(guild, targetChannelId);
-          playAudioInVoice(TEMP_AUDIO_PATH, volume || 0.8);
+          playAudioInVoice(TEMP_AUDIO_PATH, volume || 0.8, { title, duration });
 
           res.writeHead(200, { 'Content-Type': 'application/json' });
           return res.end(JSON.stringify({ success: true }));
@@ -947,7 +974,7 @@ const server = http.createServer(async (req, res) => {
 
       if (req.url === '/api/play-audio-stream') {
         try {
-          const { channelId, audioUrl, volume } = data;
+          const { channelId, audioUrl, volume, title, duration } = data;
           const guild = await client.guilds.fetch(GUILD_ID);
           const targetChannelId = channelId || currentVoiceChannelId;
 
@@ -955,7 +982,7 @@ const server = http.createServer(async (req, res) => {
           if (!audioUrl) throw new Error('Cole a URL de um arquivo MP3!');
 
           await ensureVoiceConnection(guild, targetChannelId);
-          playAudioInVoice(audioUrl, volume || 0.8);
+          playAudioInVoice(audioUrl, volume || 0.8, { title, duration });
 
           res.writeHead(200, { 'Content-Type': 'application/json' });
           return res.end(JSON.stringify({ success: true }));
@@ -986,12 +1013,31 @@ const server = http.createServer(async (req, res) => {
 
       if (req.url === '/api/pause-audio') {
         audioPlayer.pause(true);
+        if (currentTrack && !currentTrack.isPaused) {
+          currentTrack.pausedAtSeconds = getPlaybackTime();
+          currentTrack.isPaused = true;
+        }
         return sendJson(res, 200, { success: true });
       }
 
       if (req.url === '/api/resume-audio') {
         audioPlayer.unpause();
+        if (currentTrack && currentTrack.isPaused) {
+          currentTrack.seekSeconds = currentTrack.pausedAtSeconds || 0;
+          currentTrack.startedAt = Date.now();
+          currentTrack.isPaused = false;
+        }
         return sendJson(res, 200, { success: true });
+      }
+
+      if (req.url === '/api/seek-audio') {
+        if (!currentTrack?.source) return sendJson(res, 400, { success: false, error: 'Nenhum áudio tocando agora.' });
+        const seconds = Math.max(0, Number(data.seconds || 0));
+        const source = currentTrack.source;
+        const title = currentTrack.title;
+        const duration = currentTrack.duration;
+        playAudioInVoice(source, currentVolume, { title, duration, seekSeconds: seconds });
+        return sendJson(res, 200, { success: true, seconds });
       }
 
       if (req.url === '/api/set-pitch') return maintenance(res, 'Pitch de áudio');
