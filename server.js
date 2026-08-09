@@ -74,10 +74,8 @@ const CHANNEL_NAMES = {
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.GuildVoiceStates,
-    GatewayIntentBits.MessageContent
+    GatewayIntentBits.GuildVoiceStates
   ]
 });
 
@@ -131,6 +129,18 @@ audioPlayer.on(AudioPlayerStatus.Idle, () => {
 
 audioPlayer.on('error', error => {
   console.error('[Killjoy Voice Engine] Erro no player:', error.message);
+});
+
+client.on('error', error => {
+  console.error('[Killjoy] Erro do cliente Discord:', error.message);
+});
+
+client.on('shardError', error => {
+  console.error('[Killjoy] Erro na conexão com o Discord:', error.message);
+});
+
+client.on('warn', warning => {
+  console.warn('[Killjoy] Aviso Discord:', warning);
 });
 
 async function registerSlashCommands() {
